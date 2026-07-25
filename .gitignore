@@ -1,3 +1,28 @@
+# Butano 빌드 결과
+/build/
+*.elf
+*.gba
+
+# 에뮬레이터 저장 파일
+*.sav
+*.srm
+
+# 에뮬레이터 상태 저장
+*.ss0
+*.ss1
+*.ss2
+*.ss3
+*.ss4
+*.ss5
+*.ss6
+*.ss7
+*.ss8
+*.ss9
+
+# 운영체제 임시 파일
+.DS_Store
+Thumbs.db
+
 # Prerequisites
 *.d
 
