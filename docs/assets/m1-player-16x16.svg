@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="520" viewBox="0 0 640 520">
+<rect width="640" height="520" fill="#17202a"/>
+<text x="320" y="36" fill="#f4f6f7" font-family="sans-serif" font-size="22" text-anchor="middle">M1 임시 플레이어 — 16×16px 사람형 예시</text>
+<g transform="translate(80 60)">
+<rect width="400" height="400" fill="#263445"/>
+<g stroke="#4b5f73" stroke-width="1">
+<path d="M0 0v400M0 0h400"/><path d="M25 0v400M0 25h400"/><path d="M50 0v400M0 50h400"/><path d="M75 0v400M0 75h400"/><path d="M100 0v400M0 100h400"/><path d="M125 0v400M0 125h400"/><path d="M150 0v400M0 150h400"/><path d="M175 0v400M0 175h400"/><path d="M200 0v400M0 200h400"/><path d="M225 0v400M0 225h400"/><path d="M250 0v400M0 250h400"/><path d="M275 0v400M0 275h400"/><path d="M300 0v400M0 300h400"/><path d="M325 0v400M0 325h400"/><path d="M350 0v400M0 350h400"/><path d="M375 0v400M0 375h400"/><path d="M400 0v400M0 400h400"/>
+</g>
+<g>
+<rect x="150" y="25" width="100" height="25" fill="#3b2416"/>
+<rect x="125" y="50" width="150" height="25" fill="#3b2416"/>
+<rect x="125" y="75" width="150" height="75" fill="#f2c49b"/>
+<rect x="150" y="100" width="25" height="25" fill="#1f2937"/><rect x="225" y="100" width="25" height="25" fill="#1f2937"/>
+<rect x="175" y="125" width="50" height="25" fill="#c87955"/>
+<rect x="125" y="150" width="150" height="25" fill="#f2c49b"/>
+<rect x="100" y="175" width="200" height="125" fill="#3b82f6"/>
+<rect x="50" y="175" width="50" height="125" fill="#f2c49b"/><rect x="300" y="175" width="50" height="125" fill="#f2c49b"/>
+<rect x="125" y="300" width="50" height="100" fill="#1e293b"/><rect x="225" y="300" width="50" height="100" fill="#1e293b"/>
+<rect x="100" y="375" width="75" height="25" fill="#111827"/><rect x="225" y="375" width="75" height="25" fill="#111827"/>
+</g></g>
+<g font-family="sans-serif">
+<text x="510" y="95" fill="#f9d65c" font-size="17">표현 기준</text>
+<text x="510" y="128" fill="#dbeafe" font-size="15">• 머리</text><text x="510" y="156" fill="#dbeafe" font-size="15">• 얼굴</text>
+<text x="510" y="184" fill="#dbeafe" font-size="15">• 몸통</text><text x="510" y="212" fill="#dbeafe" font-size="15">• 양팔</text>
+<text x="510" y="240" fill="#dbeafe" font-size="15">• 양다리</text>
+<text x="320" y="490" fill="#cbd5e1" font-size="16" text-anchor="middle">M1 동작 검증용 임시 그래픽 — 완성 캐릭터 디자인 아님</text>
+</g></svg>
