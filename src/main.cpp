@@ -9,12 +9,26 @@
 #include "bn_tile.h"
 #include "bn_vector.h"
 
+#include "bn_sprite_items_gunner_8dir_sheet.h"
+
 namespace
 {
     enum class game_state
     {
         TITLE,
         GAME
+    };
+
+    enum class player_direction
+    {
+        DOWN = 0,
+        DOWN_LEFT = 1,
+        LEFT = 2,
+        UP_LEFT = 3,
+        UP = 4,
+        UP_RIGHT = 5,
+        RIGHT = 6,
+        DOWN_RIGHT = 7
     };
 
     constexpr bn::color title_background_color(2, 4, 9);
@@ -32,8 +46,9 @@ namespace
     constexpr int player_min_y = -(battlefield_height / 2) + player_half_size;
     constexpr int player_max_y = (battlefield_height / 2) - player_half_size;
     constexpr int player_start_x = 0;
-    constexpr int player_start_y = 56;
-    constexpr int player_movement_speed = 1;
+    constexpr int player_start_y = 0;
+    constexpr bn::fixed player_movement_speed(1);
+    constexpr bn::fixed player_diagonal_movement_speed(0.70710678f);
 
     static_assert(player_min_x == -72 && player_max_x == 72);
     static_assert(player_min_y == -72 && player_max_y == 72);
@@ -123,67 +138,6 @@ namespace
             battlefield_tiles, battlefield_colors, bn::bpp_mode::BPP_4,
             battlefield_map[0], bn::size(32, 32));
 
-    constexpr int player_pixel(int x, int y)
-    {
-        if(y >= 1 && y <= 5 && x >= 5 && x <= 10)
-        {
-            return (y == 1 && (x == 5 || x == 10)) ? 0 : 1;
-        }
-
-        if(y >= 6 && y <= 10)
-        {
-            if(x >= 5 && x <= 10)
-            {
-                return 2;
-            }
-
-            if(y >= 7 && ((x >= 2 && x <= 4) || (x >= 11 && x <= 13)))
-            {
-                return 1;
-            }
-        }
-
-        if(y >= 11 && y <= 14 && ((x >= 5 && x <= 7) || (x >= 8 && x <= 10)))
-        {
-            return 3;
-        }
-
-        return 0;
-    }
-
-    constexpr bn::array<bn::tile, 4> make_player_tiles()
-    {
-        bn::array<bn::tile, 4> result = {};
-
-        for(int y = 0; y < player_size; ++y)
-        {
-            for(int x = 0; x < player_size; ++x)
-            {
-                int color_index = player_pixel(x, y);
-
-                if(color_index)
-                {
-                    int tile_index = ((y / 8) * 2) + (x / 8);
-                    result[tile_index].data[y % 8] |= unsigned(color_index) << ((x % 8) * 4);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    constexpr bn::array<bn::tile, 4> player_tiles = make_player_tiles();
-
-    constexpr bn::array<bn::color, 16> player_colors = {
-        bn::color(0, 0, 0), bn::color(31, 22, 15), bn::color(6, 18, 30), bn::color(10, 10, 16),
-        bn::color(), bn::color(), bn::color(), bn::color(),
-        bn::color(), bn::color(), bn::color(), bn::color(),
-        bn::color(), bn::color(), bn::color(), bn::color()
-    };
-
-    constexpr bn::sprite_item player_item(
-            bn::sprite_shape_size(player_size, player_size), player_tiles, player_colors, bn::bpp_mode::BPP_4, 1);
-
     bn::fixed clamp_player_position(bn::fixed position, int minimum, int maximum)
     {
         if(position < minimum)
@@ -199,34 +153,58 @@ namespace
         return position;
     }
 
-    void update_player(bn::sprite_ptr& player)
+    player_direction direction_from_input(int horizontal, int vertical)
     {
-        bn::fixed x = player.x();
-        bn::fixed y = player.y();
-
-        if(bn::keypad::left_held())
+        if(vertical > 0)
         {
-            x -= player_movement_speed;
+            if(horizontal < 0)
+            {
+                return player_direction::DOWN_LEFT;
+            }
+
+            if(horizontal > 0)
+            {
+                return player_direction::DOWN_RIGHT;
+            }
+
+            return player_direction::DOWN;
         }
 
-        if(bn::keypad::right_held())
+        if(vertical < 0)
         {
-            x += player_movement_speed;
+            if(horizontal < 0)
+            {
+                return player_direction::UP_LEFT;
+            }
+
+            if(horizontal > 0)
+            {
+                return player_direction::UP_RIGHT;
+            }
+
+            return player_direction::UP;
         }
 
-        if(bn::keypad::up_held())
-        {
-            y -= player_movement_speed;
-        }
+        return horizontal < 0 ? player_direction::LEFT : player_direction::RIGHT;
+    }
 
-        if(bn::keypad::down_held())
-        {
-            y += player_movement_speed;
-        }
+    void update_player(bn::sprite_ptr& player, player_direction& direction)
+    {
+        int horizontal = int(bn::keypad::right_held()) - int(bn::keypad::left_held());
+        int vertical = int(bn::keypad::down_held()) - int(bn::keypad::up_held());
 
-        player.set_position(
-                clamp_player_position(x, player_min_x, player_max_x),
-                clamp_player_position(y, player_min_y, player_max_y));
+        if(horizontal || vertical)
+        {
+            direction = direction_from_input(horizontal, vertical);
+            player.set_tiles(bn::sprite_items::gunner_8dir_sheet.tiles_item(), int(direction));
+
+            bn::fixed movement_speed = horizontal && vertical ?
+                    player_diagonal_movement_speed : player_movement_speed;
+
+            player.set_position(
+                    clamp_player_position(player.x() + (horizontal * movement_speed), player_min_x, player_max_x),
+                    clamp_player_position(player.y() + (vertical * movement_speed), player_min_y, player_max_y));
+        }
     }
 
     int glyph_index(char character)
@@ -281,7 +259,9 @@ int main()
     bn::regular_bg_ptr battlefield = battlefield_item.create_bg(0, 0);
     battlefield.set_visible(false);
 
-    bn::sprite_ptr player = player_item.create_sprite(player_start_x, player_start_y);
+    player_direction player_facing = player_direction::DOWN;
+    bn::sprite_ptr player = bn::sprite_items::gunner_8dir_sheet.create_sprite(
+            player_start_x, player_start_y, int(player_facing));
     player.set_visible(false);
 
     while(true)
@@ -296,7 +276,7 @@ int main()
         }
         else if(state == game_state::GAME)
         {
-            update_player(player);
+            update_player(player, player_facing);
         }
 
         bn::core::update();
