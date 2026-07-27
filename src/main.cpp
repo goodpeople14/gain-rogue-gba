@@ -2,6 +2,8 @@
 #include "bn_array.h"
 #include "bn_bg_palettes.h"
 #include "bn_keypad.h"
+#include "bn_regular_bg_item.h"
+#include "bn_regular_bg_ptr.h"
 #include "bn_sprite_item.h"
 #include "bn_sprite_ptr.h"
 #include "bn_tile.h"
@@ -17,6 +19,24 @@ namespace
 
     constexpr bn::color title_background_color(2, 4, 9);
     constexpr bn::color game_background_color(3, 12, 7);
+
+    constexpr int screen_width = 240;
+    constexpr int screen_height = 160;
+    constexpr int ui_panel_width = 40;
+    constexpr int battlefield_width = screen_width - (ui_panel_width * 2);
+    constexpr int battlefield_height = screen_height;
+    constexpr int player_size = 16;
+    constexpr int player_half_size = player_size / 2;
+    constexpr int player_min_x = -(battlefield_width / 2) + player_half_size;
+    constexpr int player_max_x = (battlefield_width / 2) - player_half_size;
+    constexpr int player_min_y = -(battlefield_height / 2) + player_half_size;
+    constexpr int player_max_y = (battlefield_height / 2) - player_half_size;
+    constexpr int player_start_x = 0;
+    constexpr int player_start_y = 56;
+    constexpr int player_movement_speed = 1;
+
+    static_assert(player_min_x == -72 && player_max_x == 72);
+    static_assert(player_min_y == -72 && player_max_y == 72);
 
     constexpr bn::tile make_glyph(const bn::array<unsigned char, 7>& rows)
     {
@@ -63,6 +83,151 @@ namespace
 
     constexpr bn::sprite_item glyph_item(
             bn::sprite_shape_size(8, 8), glyph_tiles, glyph_colors, bn::bpp_mode::BPP_4, glyph_tiles.size());
+
+    constexpr bn::array<bn::tile, 2> battlefield_tiles = {
+        bn::tile { { 0, 0, 0, 0, 0, 0, 0, 0 } },
+        bn::tile { { 0x11111111, 0x11111111, 0x11111111, 0x11111111,
+                     0x11111111, 0x11111111, 0x11111111, 0x11111111 } }
+    };
+
+    constexpr bn::array<bn::color, 16> battlefield_colors = {
+        bn::color(0, 0, 0), bn::color(7, 8, 11), bn::color(), bn::color(),
+        bn::color(), bn::color(), bn::color(), bn::color(),
+        bn::color(), bn::color(), bn::color(), bn::color(),
+        bn::color(), bn::color(), bn::color(), bn::color()
+    };
+
+    constexpr bn::array<bn::regular_bg_map_cell, 32 * 32> make_battlefield_map()
+    {
+        bn::array<bn::regular_bg_map_cell, 32 * 32> result = {};
+
+        // A centered 256px background shows columns 1 through 30 on the 240px screen.
+        // Five 8px columns on each side form the two 40px UI panels.
+        for(int row = 0; row < 32; ++row)
+        {
+            for(int column = 1; column <= 30; ++column)
+            {
+                if(column <= 5 || column >= 26)
+                {
+                    result[(row * 32) + column] = 1;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    constexpr bn::array<bn::regular_bg_map_cell, 32 * 32> battlefield_map = make_battlefield_map();
+
+    constexpr bn::regular_bg_item battlefield_item(
+            battlefield_tiles, battlefield_colors, bn::bpp_mode::BPP_4,
+            battlefield_map[0], bn::size(32, 32));
+
+    constexpr int player_pixel(int x, int y)
+    {
+        if(y >= 1 && y <= 5 && x >= 5 && x <= 10)
+        {
+            return (y == 1 && (x == 5 || x == 10)) ? 0 : 1;
+        }
+
+        if(y >= 6 && y <= 10)
+        {
+            if(x >= 5 && x <= 10)
+            {
+                return 2;
+            }
+
+            if(y >= 7 && ((x >= 2 && x <= 4) || (x >= 11 && x <= 13)))
+            {
+                return 1;
+            }
+        }
+
+        if(y >= 11 && y <= 14 && ((x >= 5 && x <= 7) || (x >= 8 && x <= 10)))
+        {
+            return 3;
+        }
+
+        return 0;
+    }
+
+    constexpr bn::array<bn::tile, 4> make_player_tiles()
+    {
+        bn::array<bn::tile, 4> result = {};
+
+        for(int y = 0; y < player_size; ++y)
+        {
+            for(int x = 0; x < player_size; ++x)
+            {
+                int color_index = player_pixel(x, y);
+
+                if(color_index)
+                {
+                    int tile_index = ((y / 8) * 2) + (x / 8);
+                    result[tile_index].data[y % 8] |= unsigned(color_index) << ((x % 8) * 4);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    constexpr bn::array<bn::tile, 4> player_tiles = make_player_tiles();
+
+    constexpr bn::array<bn::color, 16> player_colors = {
+        bn::color(0, 0, 0), bn::color(31, 22, 15), bn::color(6, 18, 30), bn::color(10, 10, 16),
+        bn::color(), bn::color(), bn::color(), bn::color(),
+        bn::color(), bn::color(), bn::color(), bn::color(),
+        bn::color(), bn::color(), bn::color(), bn::color()
+    };
+
+    constexpr bn::sprite_item player_item(
+            bn::sprite_shape_size(player_size, player_size), player_tiles, player_colors, bn::bpp_mode::BPP_4, 1);
+
+    bn::fixed clamp_player_position(bn::fixed position, int minimum, int maximum)
+    {
+        if(position < minimum)
+        {
+            return minimum;
+        }
+
+        if(position > maximum)
+        {
+            return maximum;
+        }
+
+        return position;
+    }
+
+    void update_player(bn::sprite_ptr& player)
+    {
+        bn::fixed x = player.x();
+        bn::fixed y = player.y();
+
+        if(bn::keypad::left_held())
+        {
+            x -= player_movement_speed;
+        }
+
+        if(bn::keypad::right_held())
+        {
+            x += player_movement_speed;
+        }
+
+        if(bn::keypad::up_held())
+        {
+            y -= player_movement_speed;
+        }
+
+        if(bn::keypad::down_held())
+        {
+            y += player_movement_speed;
+        }
+
+        player.set_position(
+                clamp_player_position(x, player_min_x, player_max_x),
+                clamp_player_position(y, player_min_y, player_max_y));
+    }
 
     int glyph_index(char character)
     {
@@ -113,13 +278,25 @@ int main()
     add_text("GAIN ROGUE", -63, -24, 14, 2, title_sprites);
     add_text("PRESS START", -40, 28, 8, 1, title_sprites);
 
+    bn::regular_bg_ptr battlefield = battlefield_item.create_bg(0, 0);
+    battlefield.set_visible(false);
+
+    bn::sprite_ptr player = player_item.create_sprite(player_start_x, player_start_y);
+    player.set_visible(false);
+
     while(true)
     {
         if(state == game_state::TITLE && bn::keypad::start_pressed())
         {
             title_sprites.clear();
             bn::bg_palettes::set_transparent_color(game_background_color);
+            battlefield.set_visible(true);
+            player.set_visible(true);
             state = game_state::GAME;
+        }
+        else if(state == game_state::GAME)
+        {
+            update_player(player);
         }
 
         bn::core::update();
