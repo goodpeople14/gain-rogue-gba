@@ -1,4 +1,4 @@
-#include "title_scene.h"
+#include "scene/title_scene.h"
 
 #include "bn_array.h"
 #include "bn_fixed.h"

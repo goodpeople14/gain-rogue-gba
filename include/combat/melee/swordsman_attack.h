@@ -15,8 +15,8 @@ public:
     bool try_attack(const AttackContext& context) final;
     void update() final;
 
-    [[nodiscard]] int try_hit(int target_id, const bn::fixed_point& target_center,
-                              int target_width, int target_height);
+    [[nodiscard]] int try_hit(int target_id, const bn::fixed_point& target_position,
+                              const Hurtbox& target_hurtbox);
 
 private:
     MeleeHitbox _hitbox;

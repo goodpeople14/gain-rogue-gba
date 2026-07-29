@@ -1,9 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "game_scene.h"
-#include "game_state.h"
-#include "title_scene.h"
+#include "game/game_state.h"
+#include "scene/game_scene.h"
+#include "scene/title_scene.h"
 
 class Game
 {

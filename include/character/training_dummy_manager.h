@@ -4,8 +4,9 @@
 #include "bn_fixed_point.h"
 #include "bn_random.h"
 
-#include "battlefield.h"
-#include "combat/training_dummy.h"
+#include "character/training_dummy.h"
+#include "combat/collision/collision_body.h"
+#include "world/battlefield.h"
 
 class SwordsmanAttack;
 
@@ -19,18 +20,19 @@ public:
     TrainingDummyManager();
 
     void enter();
-    void update(const bn::fixed_point& player_position);
+    void update(const WorldBox& player_pushbox);
     void resolve_attack(SwordsmanAttack& attack);
 
     [[nodiscard]] int active_count() const;
+    [[nodiscard]] WorldBoxList<max_dummies> active_pushboxes() const;
 
 private:
     [[nodiscard]] TrainingDummy& dummy(int index);
     [[nodiscard]] const TrainingDummy& dummy(int index) const;
     [[nodiscard]] int empty_slot() const;
-    [[nodiscard]] bool valid_position(const bn::fixed_point& position,
-                                      const bn::fixed_point& player_position) const;
-    bool try_spawn(const bn::fixed_point& player_position);
+    void prepare_spawn_position(const WorldBox& player_pushbox);
+    [[nodiscard]] bool spawn_position_occupied(const WorldBox& player_pushbox) const;
+    void try_complete_spawn(const WorldBox& player_pushbox);
 
     static constexpr MovementBounds spawn_bounds =
             Battlefield::movement_bounds(TrainingDummy::size, TrainingDummy::size);
@@ -40,6 +42,8 @@ private:
     TrainingDummy _dummy_3;
     bn::random _random;
     int _spawn_timer = 0;
+    int _pending_slot = -1;
+    bn::fixed_point _pending_position;
 };
 
 #endif

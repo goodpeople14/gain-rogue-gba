@@ -1,4 +1,4 @@
-#include "battlefield.h"
+#include "world/battlefield.h"
 
 #include "bn_array.h"
 #include "bn_color.h"

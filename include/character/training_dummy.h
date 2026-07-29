@@ -4,6 +4,8 @@
 #include "bn_fixed_point.h"
 #include "bn_sprite_ptr.h"
 
+#include "combat/collision/collision_body.h"
+
 class TrainingDummy
 {
 public:
@@ -20,6 +22,9 @@ public:
     [[nodiscard]] bool active() const;
     [[nodiscard]] int current_hp() const;
     [[nodiscard]] bn::fixed_point position() const;
+    [[nodiscard]] const CollisionBody& collision_body() const;
+    [[nodiscard]] WorldBox world_hurtbox() const;
+    [[nodiscard]] WorldBox world_pushbox() const;
 
 private:
     bn::sprite_ptr _sprite;

@@ -1,4 +1,4 @@
-#include "combat/training_dummy.h"
+#include "character/training_dummy.h"
 
 #include "bn_array.h"
 #include "bn_color.h"
@@ -7,6 +7,11 @@
 
 namespace
 {
+    constexpr CollisionBody training_dummy_collision_body = {
+        { { 0, 0, 10, 10 } },
+        { { 0, 2, 10, 10 } }
+    };
+
     constexpr int dummy_pixel(int x, int y)
     {
         if(y >= 2 && y <= 5 && x >= 5 && x <= 10)
@@ -143,4 +148,19 @@ int TrainingDummy::current_hp() const
 bn::fixed_point TrainingDummy::position() const
 {
     return _sprite.position();
+}
+
+const CollisionBody& TrainingDummy::collision_body() const
+{
+    return training_dummy_collision_body;
+}
+
+WorldBox TrainingDummy::world_hurtbox() const
+{
+    return world_box(position(), training_dummy_collision_body.hurtbox.box);
+}
+
+WorldBox TrainingDummy::world_pushbox() const
+{
+    return world_box(position(), training_dummy_collision_body.pushbox.box);
 }

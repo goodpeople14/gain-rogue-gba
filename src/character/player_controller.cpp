@@ -1,4 +1,4 @@
-#include "player_controller.h"
+#include "character/player_controller.h"
 
 #include "bn_keypad.h"
 
@@ -7,7 +7,7 @@ namespace
     constexpr bn::fixed diagonal_movement_ratio(0.70710678f);
 }
 
-void PlayerController::update(Character& character, const MovementBounds& bounds) const
+MovementIntent PlayerController::movement_intent(const Character& character) const
 {
     int horizontal = int(bn::keypad::right_held()) - int(bn::keypad::left_held());
     int vertical = int(bn::keypad::down_held()) - int(bn::keypad::up_held());
@@ -22,8 +22,10 @@ void PlayerController::update(Character& character, const MovementBounds& bounds
             movement_speed *= diagonal_movement_ratio;
         }
 
-        character.move(horizontal * movement_speed, vertical * movement_speed, direction, bounds);
+        return { bn::fixed_point(horizontal * movement_speed, vertical * movement_speed), direction, true };
     }
+
+    return { bn::fixed_point(0, 0), character.direction(), false };
 }
 
 Direction PlayerController::_direction_from_input(int horizontal, int vertical)

@@ -3,7 +3,7 @@
 
 #include "bn_fixed_point.h"
 
-#include "direction.h"
+#include "game/direction.h"
 
 struct AttackContext
 {

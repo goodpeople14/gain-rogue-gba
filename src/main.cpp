@@ -1,6 +1,6 @@
 #include "bn_core.h"
 
-#include "game.h"
+#include "game/game.h"
 
 int main()
 {

@@ -1,11 +1,11 @@
 #ifndef GAME_SCENE_H
 #define GAME_SCENE_H
 
-#include "battlefield.h"
-#include "character.h"
+#include "character/character.h"
+#include "character/player_controller.h"
+#include "character/training_dummy_manager.h"
 #include "combat/melee/swordsman_attack.h"
-#include "combat/training_dummy_manager.h"
-#include "player_controller.h"
+#include "world/battlefield.h"
 
 class GameScene
 {

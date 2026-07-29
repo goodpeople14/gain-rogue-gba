@@ -27,8 +27,8 @@ void SwordsmanAttack::update()
     _hitbox.update();
 }
 
-int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_center,
-                             int target_width, int target_height)
+int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_position,
+                             const Hurtbox& target_hurtbox)
 {
-    return _hitbox.try_hit(target_id, target_center, target_width, target_height);
+    return _hitbox.try_hit(target_id, target_position, target_hurtbox);
 }
