@@ -3,6 +3,7 @@
 
 #include "combat/attack_behavior.h"
 #include "combat/melee/melee_hitbox.h"
+#include "combat/melee/swordsman_slash_effect.h"
 
 class SwordsmanAttack : public AttackBehavior
 {
@@ -20,6 +21,7 @@ public:
 
 private:
     MeleeHitbox _hitbox;
+    SwordsmanSlashEffect _slash_effect;
     int _cooldown_remaining = 0;
 };
 

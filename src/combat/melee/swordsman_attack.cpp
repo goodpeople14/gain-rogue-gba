@@ -13,6 +13,7 @@ bool SwordsmanAttack::try_attack(const AttackContext& context)
     }
 
     _hitbox.activate(context, hitbox_active_frames, attack_power);
+    _slash_effect.play(context);
     _cooldown_remaining = cooldown_frames;
     return true;
 }
@@ -25,6 +26,7 @@ void SwordsmanAttack::update()
     }
 
     _hitbox.update();
+    _slash_effect.update();
 }
 
 int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_position,
