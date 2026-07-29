@@ -366,7 +366,7 @@ def validate_indexed_bmp(path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=Path("generated/slash_effects"))
+    parser.add_argument("--output", type=Path, default=Path("graphics/effects/attacks/swordsman"))
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
 

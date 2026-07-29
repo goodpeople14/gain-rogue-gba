@@ -27,7 +27,13 @@ SOURCES          := src \
                     src/combat/collision
 INCLUDES         := include
 DATA             :=
-GRAPHICS         := graphics
+GRAPHICS         := graphics/characters/heroes/gunner \
+                    graphics/characters/heroes/swordsman \
+                    graphics/characters/enemies/caveman \
+                    graphics/characters/enemies/ninja \
+                    graphics/effects/attacks/swordsman \
+                    graphics/backgrounds \
+                    graphics/ui
 AUDIO            := audio
 DMGAUDIO         := dmg_audio
 
