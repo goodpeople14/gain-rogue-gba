@@ -23,6 +23,8 @@ PALETTE = {
     "pale": (255, 233, 166),
     "white": (255, 248, 231),
 }
+INDEXED_PALETTE = [GREEN, *PALETTE.values()]
+PALETTE_INDEX = {color: index for index, color in enumerate(INDEXED_PALETTE)}
 CENTER = (24, 24, 39, 39)
 
 
@@ -314,6 +316,54 @@ def render(direction: str, frames_data):
     return frames, reports
 
 
+def indexed_image(image: Image.Image) -> Image.Image:
+    """Convert an authored RGB image to the fixed Butano BMP palette without quantization."""
+    if image.mode != "RGB":
+        raise ValueError(f"Expected RGB image, got {image.mode}")
+
+    indices = []
+    for color in image.getdata():
+        try:
+            indices.append(PALETTE_INDEX[color])
+        except KeyError as error:
+            raise ValueError(f"Unexpected RGB color: {color}") from error
+
+    result = Image.new("P", image.size)
+    palette_data = []
+    for color in INDEXED_PALETTE:
+        palette_data.extend(color)
+    palette_data.extend([0] * (768 - len(palette_data)))
+    result.putpalette(palette_data)
+    result.putdata(indices)
+    return result
+
+
+def validate_indexed_bmp(path: Path) -> None:
+    if path.read_bytes()[28:30] != (8).to_bytes(2, "little"):
+        raise ValueError(f"Expected 8bpp BMP: {path}")
+
+    with Image.open(path) as image:
+        if image.size != SHEET_SIZE:
+            raise ValueError(f"Unexpected sheet size: {path}: {image.size}")
+        if image.mode != "P":
+            raise ValueError(f"Expected palette BMP: {path}: {image.mode}")
+        palette = image.getpalette()
+
+        if palette is None:
+            raise ValueError(f"Missing BMP palette: {path}")
+
+        for index, color in enumerate(INDEXED_PALETTE):
+            start = index * 3
+            if tuple(palette[start:start + 3]) != color:
+                raise ValueError(f"Unexpected palette index {index}: {path}")
+
+        used_indices = set(image.getdata())
+        if not used_indices.issubset(set(range(len(INDEXED_PALETTE)))):
+            raise ValueError(f"Unexpected palette index: {path}: {used_indices}")
+        if image.size[0] != FRAME_SIZE * FRAME_COUNT:
+            raise ValueError(f"Unexpected frame count: {path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("generated/slash_effects"))
@@ -338,7 +388,9 @@ def main() -> None:
         for index, frame in enumerate(frames):
             sheet.paste(frame, (index * FRAME_SIZE, 0))
         stem = f"swordsman_slash_{direction}"
-        sheet.save(args.output / f"{stem}.bmp")
+        bmp_path = args.output / f"{stem}.bmp"
+        indexed_image(sheet).save(bmp_path)
+        validate_indexed_bmp(bmp_path)
         sheet.save(args.output / f"{stem}.png")
         (args.output / f"{stem}.json").write_text(
             '{\n    "type": "sprite",\n    "height": 64\n}\n', encoding="utf-8"
