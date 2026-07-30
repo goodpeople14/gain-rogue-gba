@@ -2,7 +2,7 @@
 
 #include "bn_sprite_item.h"
 
-#include "bn_sprite_items_swordsman_sword_down.h"
+#include "bn_sprite_items_swordsman_attack_down.h"
 #include "bn_sprite_items_swordsman_slash_down.h"
 #include "bn_sprite_items_swordsman_slash_down_left.h"
 #include "bn_sprite_items_swordsman_slash_left.h"
@@ -14,7 +14,7 @@
 
 namespace
 {
-    constexpr int sword_z_order = -1;
+    constexpr int attack_z_order = -1;
     constexpr int slash_z_order = -2;
 
     [[nodiscard]] const bn::sprite_item& slash_item(Direction direction)
@@ -50,12 +50,12 @@ void SwordsmanAttackVisual::play(const AttackContext& context)
 
     if(context.direction == Direction::DOWN)
     {
-        _sword_sprite = bn::sprite_items::swordsman_sword_down.create_sprite(context.position, 0);
-        _sword_sprite->set_z_order(sword_z_order);
+        _attack_sprite = bn::sprite_items::swordsman_attack_down.create_sprite(context.position, 0);
+        _attack_sprite->set_z_order(attack_z_order);
     }
     else
     {
-        _sword_sprite.reset();
+        _attack_sprite.reset();
     }
 
     _direction = context.direction;
@@ -82,14 +82,14 @@ void SwordsmanAttackVisual::update()
 
     if(_frame == frame_count)
     {
-        _sword_sprite.reset();
+        _attack_sprite.reset();
         _slash_sprite.reset();
         return;
     }
 
-    if(_sword_sprite)
+    if(_attack_sprite)
     {
-        _sword_sprite->set_item(bn::sprite_items::swordsman_sword_down, _frame);
+        _attack_sprite->set_item(bn::sprite_items::swordsman_attack_down, _frame);
     }
 
     _slash_sprite->set_item(slash_item(_direction), _frame);
@@ -98,4 +98,9 @@ void SwordsmanAttackVisual::update()
 bool SwordsmanAttackVisual::active() const
 {
     return bool(_slash_sprite);
+}
+
+bool SwordsmanAttackVisual::hides_character() const
+{
+    return bool(_attack_sprite);
 }

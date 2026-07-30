@@ -5,6 +5,11 @@ bool SwordsmanAttack::can_attack() const
     return _cooldown_remaining == 0;
 }
 
+bool SwordsmanAttack::hides_character() const
+{
+    return _attack_visual.hides_character();
+}
+
 bool SwordsmanAttack::try_attack(const AttackContext& context)
 {
     if(! can_attack())

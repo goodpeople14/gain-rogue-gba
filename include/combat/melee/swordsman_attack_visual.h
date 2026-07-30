@@ -16,9 +16,10 @@ public:
     void update();
 
     [[nodiscard]] bool active() const;
+    [[nodiscard]] bool hides_character() const;
 
 private:
-    bn::optional<bn::sprite_ptr> _sword_sprite;
+    bn::optional<bn::sprite_ptr> _attack_sprite;
     bn::optional<bn::sprite_ptr> _slash_sprite;
     Direction _direction = Direction::DOWN;
     int _frame = 0;

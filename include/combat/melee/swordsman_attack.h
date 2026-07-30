@@ -13,6 +13,7 @@ public:
     static constexpr int attack_power = 1;
 
     [[nodiscard]] bool can_attack() const final;
+    [[nodiscard]] bool hides_character() const final;
     bool try_attack(const AttackContext& context) final;
     void update() final;
 

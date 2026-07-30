@@ -3,7 +3,7 @@
 #include "bn_bg_palettes.h"
 #include "bn_keypad.h"
 
-#include "bn_sprite_items_swordsman_8dir_sheet.h"
+#include "bn_sprite_items_gunner_8dir_sheet.h"
 
 #include "combat/collision/movement_collision.h"
 
@@ -26,7 +26,7 @@ namespace
 }
 
 GameScene::GameScene() :
-    _player(bn::sprite_items::swordsman_8dir_sheet, player_start_x, player_start_y,
+    _player(bn::sprite_items::gunner_8dir_sheet, player_start_x, player_start_y,
             Direction::DOWN, player_movement_speed, swordsman_collision_body, _player_attack),
     _player_bounds(player_bounds)
 {
