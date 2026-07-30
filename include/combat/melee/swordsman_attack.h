@@ -3,7 +3,7 @@
 
 #include "combat/attack_behavior.h"
 #include "combat/melee/melee_hitbox.h"
-#include "combat/melee/swordsman_attack_visual.h"
+#include "combat/melee/swordsman_slash_effect.h"
 
 class SwordsmanAttack : public AttackBehavior
 {
@@ -13,7 +13,6 @@ public:
     static constexpr int attack_power = 1;
 
     [[nodiscard]] bool can_attack() const final;
-    [[nodiscard]] bool hides_character() const final;
     bool try_attack(const AttackContext& context) final;
     void update() final;
 
@@ -22,7 +21,7 @@ public:
 
 private:
     MeleeHitbox _hitbox;
-    SwordsmanAttackVisual _attack_visual;
+    SwordsmanSlashEffect _slash_effect;
     int _cooldown_remaining = 0;
 };
 

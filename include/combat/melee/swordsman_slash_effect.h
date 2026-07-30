@@ -1,12 +1,12 @@
-#ifndef COMBAT_MELEE_SWORDSMAN_ATTACK_VISUAL_H
-#define COMBAT_MELEE_SWORDSMAN_ATTACK_VISUAL_H
+#ifndef COMBAT_MELEE_SWORDSMAN_SLASH_EFFECT_H
+#define COMBAT_MELEE_SWORDSMAN_SLASH_EFFECT_H
 
 #include "bn_optional.h"
 #include "bn_sprite_ptr.h"
 
 #include "combat/attack_context.h"
 
-class SwordsmanAttackVisual
+class SwordsmanSlashEffect
 {
 public:
     static constexpr int frame_count = 5;
@@ -16,11 +16,9 @@ public:
     void update();
 
     [[nodiscard]] bool active() const;
-    [[nodiscard]] bool hides_character() const;
 
 private:
-    bn::optional<bn::sprite_ptr> _attack_sprite;
-    bn::optional<bn::sprite_ptr> _slash_sprite;
+    bn::optional<bn::sprite_ptr> _sprite;
     Direction _direction = Direction::DOWN;
     int _frame = 0;
     int _ticks_in_frame = 0;

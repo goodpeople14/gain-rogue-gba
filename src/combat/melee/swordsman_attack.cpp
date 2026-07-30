@@ -5,11 +5,6 @@ bool SwordsmanAttack::can_attack() const
     return _cooldown_remaining == 0;
 }
 
-bool SwordsmanAttack::hides_character() const
-{
-    return _attack_visual.hides_character();
-}
-
 bool SwordsmanAttack::try_attack(const AttackContext& context)
 {
     if(! can_attack())
@@ -18,7 +13,7 @@ bool SwordsmanAttack::try_attack(const AttackContext& context)
     }
 
     _hitbox.activate(context, hitbox_active_frames, attack_power);
-    _attack_visual.play(context);
+    _slash_effect.play(context);
     _cooldown_remaining = cooldown_frames;
     return true;
 }
@@ -31,7 +26,7 @@ void SwordsmanAttack::update()
     }
 
     _hitbox.update();
-    _attack_visual.update();
+    _slash_effect.update();
 }
 
 int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_position,

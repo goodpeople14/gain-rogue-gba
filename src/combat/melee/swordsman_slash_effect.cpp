@@ -1,8 +1,7 @@
-#include "combat/melee/swordsman_attack_visual.h"
+#include "combat/melee/swordsman_slash_effect.h"
 
 #include "bn_sprite_item.h"
 
-#include "bn_sprite_items_swordsman_attack_down.h"
 #include "bn_sprite_items_swordsman_slash_down.h"
 #include "bn_sprite_items_swordsman_slash_down_left.h"
 #include "bn_sprite_items_swordsman_slash_left.h"
@@ -14,9 +13,6 @@
 
 namespace
 {
-    constexpr int attack_z_order = -1;
-    constexpr int slash_z_order = -2;
-
     [[nodiscard]] const bn::sprite_item& slash_item(Direction direction)
     {
         switch(direction)
@@ -43,29 +39,18 @@ namespace
     }
 }
 
-void SwordsmanAttackVisual::play(const AttackContext& context)
+void SwordsmanSlashEffect::play(const AttackContext& context)
 {
-    _slash_sprite = slash_item(context.direction).create_sprite(context.position, 0);
-    _slash_sprite->set_z_order(slash_z_order);
-
-    if(context.direction == Direction::DOWN)
-    {
-        _attack_sprite = bn::sprite_items::swordsman_attack_down.create_sprite(context.position, 0);
-        _attack_sprite->set_z_order(attack_z_order);
-    }
-    else
-    {
-        _attack_sprite.reset();
-    }
-
+    const bn::sprite_item& item = slash_item(context.direction);
+    _sprite = item.create_sprite(context.position, 0);
     _direction = context.direction;
     _frame = 0;
     _ticks_in_frame = 0;
 }
 
-void SwordsmanAttackVisual::update()
+void SwordsmanSlashEffect::update()
 {
-    if(! _slash_sprite)
+    if(! _sprite)
     {
         return;
     }
@@ -82,25 +67,14 @@ void SwordsmanAttackVisual::update()
 
     if(_frame == frame_count)
     {
-        _attack_sprite.reset();
-        _slash_sprite.reset();
+        _sprite.reset();
         return;
     }
 
-    if(_attack_sprite)
-    {
-        _attack_sprite->set_item(bn::sprite_items::swordsman_attack_down, _frame);
-    }
-
-    _slash_sprite->set_item(slash_item(_direction), _frame);
+    _sprite->set_item(slash_item(_direction), _frame);
 }
 
-bool SwordsmanAttackVisual::active() const
+bool SwordsmanSlashEffect::active() const
 {
-    return bool(_slash_sprite);
-}
-
-bool SwordsmanAttackVisual::hides_character() const
-{
-    return bool(_attack_sprite);
+    return bool(_sprite);
 }

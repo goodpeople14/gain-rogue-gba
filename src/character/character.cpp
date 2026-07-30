@@ -20,7 +20,6 @@ bool Character::attack()
 void Character::update_attack()
 {
     _attack_behavior.update();
-    _sprite.set_visible(! _attack_behavior.hides_character());
 }
 
 void Character::set_visible(bool visible)
