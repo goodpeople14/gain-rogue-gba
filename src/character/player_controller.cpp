@@ -7,7 +7,12 @@ namespace
     constexpr bn::fixed diagonal_movement_ratio(0.70710678f);
 }
 
-MovementIntent PlayerController::movement_intent(const Character& character) const
+PlayerCommand PlayerController::command(const Character& character) const
+{
+    return { _movement_intent(character), bn::keypad::a_pressed() };
+}
+
+MovementIntent PlayerController::_movement_intent(const Character& character) const
 {
     int horizontal = int(bn::keypad::right_held()) - int(bn::keypad::left_held());
     int vertical = int(bn::keypad::down_held()) - int(bn::keypad::up_held());

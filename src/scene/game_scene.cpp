@@ -1,9 +1,6 @@
 #include "scene/game_scene.h"
 
 #include "bn_bg_palettes.h"
-#include "bn_keypad.h"
-
-#include "bn_sprite_items_swordsman_8dir_sheet.h"
 
 #include "combat/collision/movement_collision.h"
 
@@ -13,11 +10,6 @@ namespace
     constexpr int player_size = 16;
     constexpr int player_start_x = 0;
     constexpr int player_start_y = 0;
-    constexpr bn::fixed player_movement_speed(1);
-    constexpr CollisionBody swordsman_collision_body = {
-        { { 0, 0, 10, 10 } },
-        { { 0, 3, 8, 8 } }
-    };
 
     constexpr MovementBounds player_bounds = Battlefield::movement_bounds(player_size, player_size);
 
@@ -26,8 +18,7 @@ namespace
 }
 
 GameScene::GameScene() :
-    _player(bn::sprite_items::swordsman_8dir_sheet, player_start_x, player_start_y,
-            Direction::DOWN, player_movement_speed, swordsman_collision_body, _player_attack),
+    _player(bn::fixed_point(player_start_x, player_start_y)),
     _player_bounds(player_bounds)
 {
     _player.set_visible(false);
@@ -43,7 +34,8 @@ void GameScene::enter()
 
 void GameScene::update()
 {
-    MovementIntent movement = _player_controller.movement_intent(_player);
+    PlayerCommand command = _player_controller.command(_player);
+    const MovementIntent& movement = command.movement;
 
     if(movement.moving)
     {
@@ -53,13 +45,13 @@ void GameScene::update()
         _player.apply_movement(resolved_position, movement.direction);
     }
 
-    if(bn::keypad::a_pressed())
+    if(command.attack_requested)
     {
-        _player.attack();
+        _player.try_attack();
     }
 
-    _player.update_attack();
+    _player.update();
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
     _training_dummies.update(player_pushbox);
-    _training_dummies.resolve_attack(_player_attack);
+    _training_dummies.resolve_attack(_player.melee_attack());
 }

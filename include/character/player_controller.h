@@ -12,12 +12,19 @@ struct MovementIntent
     bool moving;
 };
 
+struct PlayerCommand
+{
+    MovementIntent movement;
+    bool attack_requested;
+};
+
 class PlayerController
 {
 public:
-    [[nodiscard]] MovementIntent movement_intent(const Character& character) const;
+    [[nodiscard]] PlayerCommand command(const Character& character) const;
 
 private:
+    [[nodiscard]] MovementIntent _movement_intent(const Character& character) const;
     [[nodiscard]] static Direction _direction_from_input(int horizontal, int vertical);
 };
 

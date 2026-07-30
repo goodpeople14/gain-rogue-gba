@@ -1,25 +1,13 @@
 #include "character/character.h"
 
-Character::Character(const bn::sprite_item& sprite_item, bn::fixed x, bn::fixed y,
-                     Direction direction, bn::fixed movement_speed, const CollisionBody& collision_body,
-                     AttackBehavior& attack_behavior) :
-    _sprite(sprite_item.create_sprite(x, y, int(direction))),
+Character::Character(const bn::sprite_item& sprite_item, const bn::fixed_point& initial_position,
+                     Direction direction, bn::fixed movement_speed, const CollisionBody& collision_body) :
+    _sprite(sprite_item.create_sprite(initial_position, int(direction))),
     _tiles_item(sprite_item.tiles_item()),
     _direction(direction),
     _movement_speed(movement_speed),
-    _collision_body(collision_body),
-    _attack_behavior(attack_behavior)
+    _collision_body(collision_body)
 {
-}
-
-bool Character::attack()
-{
-    return _attack_behavior.try_attack({ _sprite.position(), _direction });
-}
-
-void Character::update_attack()
-{
-    _attack_behavior.update();
 }
 
 void Character::set_visible(bool visible)

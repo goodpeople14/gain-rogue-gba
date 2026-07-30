@@ -1,10 +1,9 @@
 #ifndef GAME_SCENE_H
 #define GAME_SCENE_H
 
-#include "character/character.h"
 #include "character/player_controller.h"
+#include "character/swordsman.h"
 #include "character/training_dummy_manager.h"
-#include "combat/melee/swordsman_attack.h"
 #include "world/battlefield.h"
 
 class GameScene
@@ -17,8 +16,7 @@ public:
 
 private:
     Battlefield _battlefield;
-    SwordsmanAttack _player_attack;
-    Character _player;
+    Swordsman _player;
     PlayerController _player_controller;
     MovementBounds _player_bounds;
     TrainingDummyManager _training_dummies;
