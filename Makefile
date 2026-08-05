@@ -23,6 +23,7 @@ SOURCES          := src \
                     src/scene \
                     src/world \
                     src/character \
+                    src/combat \
                     src/combat/melee \
                     src/combat/collision
 INCLUDES         := include
@@ -32,6 +33,7 @@ GRAPHICS         := graphics/characters/heroes/gunner \
                     graphics/characters/enemies/caveman \
                     graphics/characters/enemies/ninja \
                     graphics/effects/attacks/swordsman \
+                    graphics/effects/common \
                     graphics/backgrounds \
                     graphics/ui
 AUDIO            := audio

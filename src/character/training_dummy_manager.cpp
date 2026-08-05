@@ -1,6 +1,7 @@
 #include "character/training_dummy_manager.h"
 
 #include "combat/melee/swordsman_attack.h"
+#include "combat/hit_effect_manager.h"
 #include "combat/collision/collision_math.h"
 
 namespace
@@ -59,7 +60,7 @@ void TrainingDummyManager::update(const WorldBox& player_pushbox)
     }
 }
 
-void TrainingDummyManager::resolve_attack(SwordsmanAttack& attack)
+void TrainingDummyManager::resolve_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
 {
     for(int index = 0; index < max_dummies; ++index)
     {
@@ -68,6 +69,10 @@ void TrainingDummyManager::resolve_attack(SwordsmanAttack& attack)
         if(target.active())
         {
             int damage = attack.try_hit(target.target_id(), target.position(), target.collision_body().hurtbox);
+            if(damage > 0)
+            {
+                hit_effects.spawn(target.world_hurtbox().center);
+            }
             target.receive_damage(damage);
         }
     }

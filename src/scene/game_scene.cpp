@@ -30,6 +30,7 @@ void GameScene::enter()
     _battlefield.set_visible(true);
     _player.set_visible(true);
     _training_dummies.enter();
+    _hit_effects.clear();
 }
 
 void GameScene::update()
@@ -53,5 +54,6 @@ void GameScene::update()
     _player.update();
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
     _training_dummies.update(player_pushbox);
-    _training_dummies.resolve_attack(_player.melee_attack());
+    _training_dummies.resolve_attack(_player.melee_attack(), _hit_effects);
+    _hit_effects.update();
 }

@@ -4,6 +4,7 @@
 #include "character/player_controller.h"
 #include "character/swordsman.h"
 #include "character/training_dummy_manager.h"
+#include "combat/hit_effect_manager.h"
 #include "world/battlefield.h"
 
 class GameScene
@@ -20,6 +21,7 @@ private:
     PlayerController _player_controller;
     MovementBounds _player_bounds;
     TrainingDummyManager _training_dummies;
+    HitEffectManager _hit_effects;
 };
 
 #endif
