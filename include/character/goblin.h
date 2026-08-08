@@ -30,7 +30,7 @@ public:
     explicit Goblin(const bn::fixed_point& home_position);
 
     void enter();
-    void update(const WorldBox& player_pushbox);
+    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
     void resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
                             HitEffectManager& hit_effects);
@@ -40,16 +40,16 @@ public:
     [[nodiscard]] State state() const;
     [[nodiscard]] WorldBox world_hurtbox() const;
     [[nodiscard]] WorldBoxList<3> active_pushboxes() const;
-    void append_collision_debug_boxes(CollisionDebugBoxList& boxes) const;
+    void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const;
 
 private:
     void _update_roam();
-    void _update_chase(const WorldBox& player_pushbox);
+    void _update_chase(const WorldBox& player_hurtbox, const WorldBox& player_pushbox);
     void _update_telegraph();
     void _update_active();
     void _update_recovery();
     void _update_return();
-    void _start_attack(const bn::fixed_point& player_position);
+    void _start_attack(Direction direction);
     void _finish_attack();
     void _die();
     void _set_telegraph_visible(bool visible);

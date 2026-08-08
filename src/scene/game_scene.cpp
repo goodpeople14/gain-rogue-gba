@@ -56,8 +56,9 @@ void GameScene::update()
     }
 
     _player.update();
+    WorldBox player_hurtbox = world_box(_player.position(), _player.collision_body().hurtbox.box);
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    _goblin.update(player_pushbox);
+    _goblin.update(player_hurtbox, player_pushbox);
     _goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
     _goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     _hit_effects.update();
@@ -78,13 +79,14 @@ void GameScene::_update_collision_debug_overlay()
     }
 
     CollisionDebugBoxList boxes;
-    boxes.add(world_box(_player.position(), _player.collision_body().hurtbox.box), CollisionDebugBoxType::HURTBOX);
+    WorldBox player_hurtbox = world_box(_player.position(), _player.collision_body().hurtbox.box);
+    boxes.add(player_hurtbox, CollisionDebugBoxType::HURTBOX);
     boxes.add(world_box(_player.position(), _player.collision_body().pushbox.box), CollisionDebugBoxType::PUSHBOX);
     WorldBoxList<max_hitboxes_per_frame> player_hitboxes = _player.melee_attack().active_hitboxes();
     for(int index = 0; index < player_hitboxes.count; ++index)
     {
         boxes.add(player_hitboxes.boxes[index], CollisionDebugBoxType::HITBOX);
     }
-    _goblin.append_collision_debug_boxes(boxes);
+    _goblin.append_collision_debug_boxes(player_hurtbox, boxes);
     _collision_debug_overlay.update(boxes);
 }

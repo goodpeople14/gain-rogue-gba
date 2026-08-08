@@ -23,12 +23,17 @@ DEBUG_PALETTE = [
     (220, 55, 48),   # hitbox red
     (246, 210, 45),  # pushbox yellow
 ]
+COMMIT_PALETTE = [
+    TRANSPARENT,
+    (158, 86, 212),  # commit box purple
+]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
 DEBUG_CORNER_PATHS = {
     "hurt": Path("graphics/effects/common/collision_debug_hurt_corner.bmp"),
     "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
     "push": Path("graphics/effects/common/collision_debug_push_corner.bmp"),
+    "commit": Path("graphics/effects/common/collision_debug_commit_corner.bmp"),
 }
 DIRECTIONS = ((0, 1), (-1, 1), (-1, 0), (-1, -1),
               (0, -1), (1, -1), (1, 0), (1, 1))
@@ -95,10 +100,10 @@ def generate_telegraph() -> None:
     image.save(TELEGRAPH_PATH)
 
 
-def generate_debug_corner(path: Path, color_index: int, dotted: bool) -> None:
+def generate_debug_corner(path: Path, color_index: int, dotted: bool, palette: list[tuple[int, int, int]] = DEBUG_PALETTE) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("P", (8, 8), 0)
-    values = [component for color in DEBUG_PALETTE for component in color]
+    values = [component for color in palette for component in color]
     image.putpalette(values + [0] * (768 - len(values)))
     draw = ImageDraw.Draw(image)
     if dotted:
@@ -126,6 +131,7 @@ def main() -> None:
     generate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
+    generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 1, False, COMMIT_PALETTE)
     validate(GOBLIN_PATH, (16, 128))
     validate(TELEGRAPH_PATH, (8, 16))
     for path in DEBUG_CORNER_PATHS.values():
