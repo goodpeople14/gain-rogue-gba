@@ -211,6 +211,21 @@ WorldBoxList<3> Goblin::active_pushboxes() const
     return result;
 }
 
+void Goblin::append_collision_debug_boxes(CollisionDebugBoxList& boxes) const
+{
+    if(! _active)
+    {
+        return;
+    }
+
+    boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX);
+    boxes.add(world_box(position(), collision_body().pushbox.box), CollisionDebugBoxType::PUSHBOX);
+    if(attack_active())
+    {
+        boxes.add(world_box(position(), attack_hitboxes[int(_attack_direction)].box), CollisionDebugBoxType::HITBOX);
+    }
+}
+
 void Goblin::_update_roam()
 {
     _move_direction(roam_directions[_roam_direction_index], roam_speed, nullptr, true);

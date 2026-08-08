@@ -15,6 +15,7 @@ public:
     bool try_attack(const AttackContext& context);
     void update(const bn::fixed_point& owner_position);
 
+    [[nodiscard]] WorldBoxList<max_hitboxes_per_frame> active_hitboxes() const;
     [[nodiscard]] int try_hit(int target_id, const bn::fixed_point& target_position,
                               const Hurtbox& target_hurtbox);
 

@@ -24,6 +24,7 @@ SOURCES          := src \
                     src/world \
                     src/character \
                     src/combat \
+                    src/debug \
                     src/combat/melee \
                     src/combat/collision
 INCLUDES         := include

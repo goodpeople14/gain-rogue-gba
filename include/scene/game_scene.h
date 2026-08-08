@@ -5,6 +5,7 @@
 #include "character/swordsman.h"
 #include "character/goblin.h"
 #include "combat/hit_effect_manager.h"
+#include "debug/collision_debug_overlay.h"
 #include "world/battlefield.h"
 
 class GameScene
@@ -16,12 +17,15 @@ public:
     void update();
 
 private:
+    void _update_collision_debug_overlay();
+
     Battlefield _battlefield;
     Swordsman _player;
     PlayerController _player_controller;
     MovementBounds _player_bounds;
     Goblin _goblin;
     HitEffectManager _hit_effects;
+    CollisionDebugOverlay _collision_debug_overlay;
 };
 
 #endif

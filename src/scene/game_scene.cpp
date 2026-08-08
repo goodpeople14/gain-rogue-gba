@@ -1,6 +1,7 @@
 #include "scene/game_scene.h"
 
 #include "bn_bg_palettes.h"
+#include "bn_keypad.h"
 
 #include "combat/collision/movement_collision.h"
 
@@ -33,6 +34,7 @@ void GameScene::enter()
     _player.set_visible(true);
     _goblin.enter();
     _hit_effects.clear();
+    _collision_debug_overlay.reset();
 }
 
 void GameScene::update()
@@ -59,4 +61,30 @@ void GameScene::update()
     _goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
     _goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     _hit_effects.update();
+
+    if(bn::keypad::select_pressed())
+    {
+        _collision_debug_overlay.toggle();
+    }
+
+    _update_collision_debug_overlay();
+}
+
+void GameScene::_update_collision_debug_overlay()
+{
+    if(! _collision_debug_overlay.enabled())
+    {
+        return;
+    }
+
+    CollisionDebugBoxList boxes;
+    boxes.add(world_box(_player.position(), _player.collision_body().hurtbox.box), CollisionDebugBoxType::HURTBOX);
+    boxes.add(world_box(_player.position(), _player.collision_body().pushbox.box), CollisionDebugBoxType::PUSHBOX);
+    WorldBoxList<max_hitboxes_per_frame> player_hitboxes = _player.melee_attack().active_hitboxes();
+    for(int index = 0; index < player_hitboxes.count; ++index)
+    {
+        boxes.add(player_hitboxes.boxes[index], CollisionDebugBoxType::HITBOX);
+    }
+    _goblin.append_collision_debug_boxes(boxes);
+    _collision_debug_overlay.update(boxes);
 }

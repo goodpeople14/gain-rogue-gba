@@ -6,6 +6,7 @@
 
 #include "character/character.h"
 #include "combat/attack_hit_registry.h"
+#include "combat/collision/collision_debug_box.h"
 
 class HitEffectManager;
 class SwordsmanAttack;
@@ -39,6 +40,7 @@ public:
     [[nodiscard]] State state() const;
     [[nodiscard]] WorldBox world_hurtbox() const;
     [[nodiscard]] WorldBoxList<3> active_pushboxes() const;
+    void append_collision_debug_boxes(CollisionDebugBoxList& boxes) const;
 
 private:
     void _update_roam();
