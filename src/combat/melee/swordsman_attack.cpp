@@ -29,6 +29,11 @@ void SwordsmanAttack::update(const bn::fixed_point& owner_position)
     _slash_effect.update(owner_position);
 }
 
+WorldBoxList<max_hitboxes_per_frame> SwordsmanAttack::active_hitboxes() const
+{
+    return _hitbox.active_hitboxes();
+}
+
 int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_position,
                              const Hurtbox& target_hurtbox)
 {

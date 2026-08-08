@@ -17,8 +17,19 @@ PALETTE = [
     (107, 64, 35),   # club
     (80, 73, 48),    # loincloth
 ]
+DEBUG_PALETTE = [
+    TRANSPARENT,
+    (42, 203, 210),  # hurtbox cyan
+    (220, 55, 48),   # hitbox red
+    (246, 210, 45),  # pushbox yellow
+]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
+DEBUG_CORNER_PATHS = {
+    "hurt": Path("graphics/effects/common/collision_debug_hurt_corner.bmp"),
+    "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
+    "push": Path("graphics/effects/common/collision_debug_push_corner.bmp"),
+}
 DIRECTIONS = ((0, 1), (-1, 1), (-1, 0), (-1, -1),
               (0, -1), (1, -1), (1, 0), (1, 1))
 
@@ -84,6 +95,22 @@ def generate_telegraph() -> None:
     image.save(TELEGRAPH_PATH)
 
 
+def generate_debug_corner(path: Path, color_index: int, dotted: bool) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("P", (8, 8), 0)
+    values = [component for color in DEBUG_PALETTE for component in color]
+    image.putpalette(values + [0] * (768 - len(values)))
+    draw = ImageDraw.Draw(image)
+    if dotted:
+        draw.point((0, 0), fill=color_index)
+        draw.point((2, 0), fill=color_index)
+        draw.point((0, 2), fill=color_index)
+    else:
+        draw.line(((0, 0), (4, 0)), fill=color_index)
+        draw.line(((0, 0), (0, 4)), fill=color_index)
+    image.save(path)
+
+
 def validate(path: Path, size: tuple[int, int]) -> None:
     raw = path.read_bytes()
     assert int.from_bytes(raw[28:30], "little") == 8
@@ -96,9 +123,14 @@ def validate(path: Path, size: tuple[int, int]) -> None:
 def main() -> None:
     generate_goblin()
     generate_telegraph()
+    generate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
+    generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
+    generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     validate(GOBLIN_PATH, (16, 128))
     validate(TELEGRAPH_PATH, (8, 16))
-    print("generated indexed 8bpp goblin (8x16x16) and enemy telegraph (8x16)")
+    for path in DEBUG_CORNER_PATHS.values():
+        validate(path, (8, 8))
+    print("generated indexed 8bpp goblin, enemy telegraph, and collision debug corners")
 
 
 if __name__ == "__main__":

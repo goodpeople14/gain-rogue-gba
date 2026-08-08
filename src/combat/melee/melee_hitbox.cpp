@@ -61,6 +61,23 @@ bool MeleeHitbox::active() const
     return _game_frame > 0 && _game_frame <= _total_frames;
 }
 
+WorldBoxList<max_hitboxes_per_frame> MeleeHitbox::active_hitboxes() const
+{
+    WorldBoxList<max_hitboxes_per_frame> result;
+    if(! active())
+    {
+        return result;
+    }
+
+    const AttackFrameData& frame_data = swordsman_attack_frame_data(_context.direction, _game_frame);
+    for(int index = 0; index < frame_data.hitbox_count; ++index)
+    {
+        result.boxes[index] = world_box(_context.position, frame_data.hitboxes[index].box);
+    }
+    result.count = frame_data.hitbox_count;
+    return result;
+}
+
 int MeleeHitbox::try_hit(int target_id, const bn::fixed_point& target_position,
                          const Hurtbox& target_hurtbox)
 {
@@ -69,14 +86,12 @@ int MeleeHitbox::try_hit(int target_id, const bn::fixed_point& target_position,
         return 0;
     }
 
-    const AttackFrameData& frame_data = swordsman_attack_frame_data(_context.direction, _game_frame);
     WorldBox hurtbox = world_box(target_position, target_hurtbox.box);
+    WorldBoxList<max_hitboxes_per_frame> hitboxes = active_hitboxes();
 
-    for(int index = 0; index < frame_data.hitbox_count; ++index)
+    for(int index = 0; index < hitboxes.count; ++index)
     {
-        WorldBox hitbox = world_box(_context.position, frame_data.hitboxes[index].box);
-
-        if(touches_or_intersects(hitbox, hurtbox))
+        if(touches_or_intersects(hitboxes.boxes[index], hurtbox))
         {
             _hit_registry.add(target_id);
             return _attack_power;
