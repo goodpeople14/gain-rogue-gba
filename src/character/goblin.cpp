@@ -3,6 +3,7 @@
 #include "bn_array.h"
 #include "bn_sprite_items_enemy_telegraph.h"
 #include "bn_sprite_items_goblin.h"
+#include "bn_sprite_items_goblin_recovery_sweat.h"
 
 #include "combat/collision/collision_math.h"
 #include "combat/hit_effect_manager.h"
@@ -19,6 +20,7 @@ namespace
     constexpr int telegraph_frames = 54;
     constexpr int active_frames = 8;
     constexpr int recovery_frames = 28;
+    constexpr int sweat_frame_ticks = 7;
     constexpr int commit_margin = 2;
     constexpr bn::fixed roam_speed = bn::fixed(1) / 4;
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
@@ -176,6 +178,9 @@ void Goblin::enter()
     _roam_direction_index = 0;
     _attack_direction = Direction::DOWN;
     _attack_hit_registry.reset();
+    _status_icon_frame = 0;
+    _status_icon_frame_ticks = 0;
+    _status_icon = StatusIcon::NONE;
     _active = true;
     _set_telegraph_visible(false);
     apply_movement(_home_position, Direction::DOWN);
@@ -359,8 +364,17 @@ void Goblin::_update_active()
 
 void Goblin::_update_recovery()
 {
+    _set_recovery_sweat_visible(true);
+    if(++_status_icon_frame_ticks == sweat_frame_ticks)
+    {
+        _status_icon_frame_ticks = 0;
+        _status_icon_frame = 1 - _status_icon_frame;
+        _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_sweat, _status_icon_frame);
+    }
+
     if(--_state_timer == 0)
     {
+        _set_recovery_sweat_visible(false);
         _state = State::CHASE;
     }
 }
@@ -392,6 +406,9 @@ void Goblin::_finish_attack()
     _attack_hit_registry.reset();
     _state = State::RECOVERY;
     _state_timer = recovery_frames;
+    _status_icon_frame = 0;
+    _status_icon_frame_ticks = 0;
+    _set_recovery_sweat_visible(true);
 }
 
 void Goblin::_die()
@@ -408,7 +425,8 @@ void Goblin::_set_telegraph_visible(bool visible)
 {
     if(! visible)
     {
-        _telegraph_sprite.reset();
+        _status_icon_sprite.reset();
+        _status_icon = StatusIcon::NONE;
         return;
     }
 
@@ -419,14 +437,53 @@ void Goblin::_set_telegraph_visible(bool visible)
     }
 
     bn::fixed_point telegraph_position(position().x(), telegraph_y);
-    if(! _telegraph_sprite)
+    if(! _status_icon_sprite)
     {
-        _telegraph_sprite = bn::sprite_items::enemy_telegraph.create_sprite(telegraph_position);
-        _telegraph_sprite->set_z_order(-2);
+        _status_icon_sprite = bn::sprite_items::enemy_telegraph.create_sprite(telegraph_position);
+        _status_icon_sprite->set_z_order(-2);
+        _status_icon = StatusIcon::TELEGRAPH;
     }
     else
     {
-        _telegraph_sprite->set_position(telegraph_position);
+        if(_status_icon != StatusIcon::TELEGRAPH)
+        {
+            _status_icon_sprite->set_item(bn::sprite_items::enemy_telegraph);
+            _status_icon = StatusIcon::TELEGRAPH;
+        }
+        _status_icon_sprite->set_position(telegraph_position);
+    }
+}
+
+void Goblin::_set_recovery_sweat_visible(bool visible)
+{
+    if(! visible)
+    {
+        _status_icon_sprite.reset();
+        _status_icon = StatusIcon::NONE;
+        return;
+    }
+
+    bn::fixed sweat_y = position().y() - 13;
+    if(sweat_y < -70)
+    {
+        sweat_y = -70;
+    }
+
+    bn::fixed_point sweat_position(position().x(), sweat_y);
+    if(! _status_icon_sprite)
+    {
+        _status_icon_sprite = bn::sprite_items::goblin_recovery_sweat.create_sprite(sweat_position, _status_icon_frame);
+        _status_icon_sprite->set_z_order(-2);
+        _status_icon = StatusIcon::RECOVERY_SWEAT;
+    }
+    else
+    {
+        if(_status_icon != StatusIcon::RECOVERY_SWEAT)
+        {
+            _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_sweat, _status_icon_frame);
+            _status_icon = StatusIcon::RECOVERY_SWEAT;
+        }
+        _status_icon_sprite->set_position(sweat_position);
     }
 }
 

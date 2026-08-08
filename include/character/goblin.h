@@ -43,6 +43,13 @@ public:
     void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const;
 
 private:
+    enum class StatusIcon
+    {
+        NONE,
+        TELEGRAPH,
+        RECOVERY_SWEAT
+    };
+
     void _update_roam();
     void _update_chase(const WorldBox& player_hurtbox, const WorldBox& player_pushbox);
     void _update_telegraph();
@@ -53,17 +60,21 @@ private:
     void _finish_attack();
     void _die();
     void _set_telegraph_visible(bool visible);
+    void _set_recovery_sweat_visible(bool visible);
     void _move_direction(Direction direction, bn::fixed speed, const WorldBox* blocking_pushbox,
                          bool constrain_to_home);
     void _move_toward(const bn::fixed_point& target, bn::fixed speed, const WorldBox* blocking_pushbox);
 
     bn::fixed_point _home_position;
-    bn::optional<bn::sprite_ptr> _telegraph_sprite;
+    bn::optional<bn::sprite_ptr> _status_icon_sprite;
     AttackHitRegistry _attack_hit_registry;
     Direction _attack_direction = Direction::DOWN;
     State _state = State::ROAM;
     int _state_timer = 0;
     int _roam_direction_index = 0;
+    int _status_icon_frame = 0;
+    int _status_icon_frame_ticks = 0;
+    StatusIcon _status_icon = StatusIcon::NONE;
     bool _active = true;
 };
 
