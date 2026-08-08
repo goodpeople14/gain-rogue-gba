@@ -19,9 +19,11 @@ namespace
 
 GameScene::GameScene() :
     _player(bn::fixed_point(player_start_x, player_start_y)),
-    _player_bounds(player_bounds)
+    _player_bounds(player_bounds),
+    _goblin(bn::fixed_point(-36, 0))
 {
     _player.set_visible(false);
+    _goblin.set_visible(false);
 }
 
 void GameScene::enter()
@@ -29,7 +31,7 @@ void GameScene::enter()
     bn::bg_palettes::set_transparent_color(game_background_color);
     _battlefield.set_visible(true);
     _player.set_visible(true);
-    _training_dummies.enter();
+    _goblin.enter();
     _hit_effects.clear();
 }
 
@@ -42,7 +44,7 @@ void GameScene::update()
     {
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _training_dummies.active_pushboxes(), _player_bounds);
+                _goblin.active_pushboxes(), _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 
@@ -53,7 +55,8 @@ void GameScene::update()
 
     _player.update();
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    _training_dummies.update(player_pushbox);
-    _training_dummies.resolve_attack(_player.melee_attack(), _hit_effects);
+    _goblin.update(player_pushbox);
+    _goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+    _goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     _hit_effects.update();
 }
