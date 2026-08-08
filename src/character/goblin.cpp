@@ -1,9 +1,11 @@
 #include "character/goblin.h"
 
 #include "bn_array.h"
+#include "bn_assert.h"
 #include "bn_sprite_items_enemy_telegraph.h"
 #include "bn_sprite_items_goblin.h"
-#include "bn_sprite_items_goblin_recovery_sweat.h"
+#include "bn_sprite_items_goblin_awareness_icons.h"
+#include "bn_sprite_items_goblin_recovery_hourglass.h"
 
 #include "combat/collision/collision_math.h"
 #include "combat/hit_effect_manager.h"
@@ -20,8 +22,21 @@ namespace
     constexpr int telegraph_frames = 54;
     constexpr int active_frames = 8;
     constexpr int recovery_frames = 28;
-    constexpr int sweat_frame_ticks = 7;
+    constexpr int discovery_flash_frames = 24;
+    constexpr int discovery_bulb_white_frames = 10;
+    constexpr int return_question_frames = 21;
     constexpr int commit_margin = 2;
+
+    [[nodiscard]] constexpr int discovery_bulb_frame(int remaining_frames)
+    {
+        return remaining_frames > discovery_flash_frames - discovery_bulb_white_frames ? 0 : 1;
+    }
+
+    [[nodiscard]] constexpr int recovery_hourglass_frame(int remaining_frames)
+    {
+        return remaining_frames > recovery_frames / 2 ? 0 : 1;
+    }
+
     constexpr bn::fixed roam_speed = bn::fixed(1) / 4;
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
     constexpr bn::fixed diagonal_ratio(0.70710678f);
@@ -163,6 +178,24 @@ namespace
     static_assert(commit_box({ { 0, 0 }, 12, 10 }).height == 6);
     static_assert(! touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 10, 0 }, 10, 10 }));
     static_assert(touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 9, 0 }, 10, 10 }));
+    static_assert(discovery_bulb_frame(24) == 0);
+    static_assert(discovery_bulb_frame(15) == 0);
+    static_assert(discovery_bulb_frame(14) == 1);
+    static_assert(discovery_bulb_frame(1) == 1);
+    static_assert(recovery_hourglass_frame(28) == 0);
+    static_assert(recovery_hourglass_frame(15) == 0);
+    static_assert(recovery_hourglass_frame(14) == 1);
+    static_assert(recovery_hourglass_frame(1) == 1);
+
+    [[nodiscard]] bn::fixed_point status_icon_position(const bn::fixed_point& position)
+    {
+        bn::fixed icon_y = position.y() - 13;
+        if(icon_y < -70)
+        {
+            icon_y = -70;
+        }
+        return { position.x(), icon_y };
+    }
 }
 
 Goblin::Goblin(const bn::fixed_point& home_position) :
@@ -179,7 +212,7 @@ void Goblin::enter()
     _attack_direction = Direction::DOWN;
     _attack_hit_registry.reset();
     _status_icon_frame = 0;
-    _status_icon_frame_ticks = 0;
+    _status_icon_timer = 0;
     _status_icon = StatusIcon::NONE;
     _active = true;
     _set_telegraph_visible(false);
@@ -194,12 +227,16 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         return;
     }
 
+    _update_timed_status_icon();
+
     switch(_state)
     {
     case State::ROAM:
         if(within_distance(position(), player_pushbox.center, discovery_distance))
         {
             _state = State::CHASE;
+            _status_icon_timer = discovery_flash_frames;
+            _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
         }
         else
         {
@@ -219,12 +256,17 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         _update_recovery();
         break;
     case State::RETURN:
-        _update_return();
+        _update_return(player_pushbox);
         break;
     case State::DEAD:
         break;
     default:
         break;
+    }
+
+    if(_status_icon_sprite)
+    {
+        _status_icon_sprite->set_position(status_icon_position(position()));
     }
 }
 
@@ -330,6 +372,8 @@ void Goblin::_update_chase(const WorldBox& player_hurtbox, const WorldBox& playe
     if(! within_distance(position(), player_hurtbox.center, disengage_distance))
     {
         _state = State::RETURN;
+        _status_icon_timer = return_question_frames;
+        _set_awareness_icon(StatusIcon::RETURN_QUESTION);
         return;
     }
 
@@ -364,27 +408,31 @@ void Goblin::_update_active()
 
 void Goblin::_update_recovery()
 {
-    _set_recovery_sweat_visible(true);
-    if(++_status_icon_frame_ticks == sweat_frame_ticks)
-    {
-        _status_icon_frame_ticks = 0;
-        _status_icon_frame = 1 - _status_icon_frame;
-        _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_sweat, _status_icon_frame);
-    }
+    _set_recovery_hourglass_visible(true);
 
     if(--_state_timer == 0)
     {
-        _set_recovery_sweat_visible(false);
+        _set_recovery_hourglass_visible(false);
         _state = State::CHASE;
     }
 }
 
-void Goblin::_update_return()
+void Goblin::_update_return(const WorldBox& player_pushbox)
 {
+    if(within_distance(position(), player_pushbox.center, discovery_distance))
+    {
+        _state = State::CHASE;
+        _status_icon_timer = discovery_flash_frames;
+        _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
+        return;
+    }
+
     if(within_distance(position(), _home_position, 1))
     {
         _state = State::ROAM;
         _state_timer = roam_direction_frames;
+        _status_icon_timer = 0;
+        _set_telegraph_visible(false);
         return;
     }
 
@@ -396,6 +444,7 @@ void Goblin::_start_attack(Direction direction)
     _attack_direction = direction;
     apply_movement(position(), _attack_direction);
     _attack_hit_registry.reset();
+    _status_icon_timer = 0;
     _state = State::TELEGRAPH;
     _state_timer = telegraph_frames;
     _set_telegraph_visible(true);
@@ -407,13 +456,14 @@ void Goblin::_finish_attack()
     _state = State::RECOVERY;
     _state_timer = recovery_frames;
     _status_icon_frame = 0;
-    _status_icon_frame_ticks = 0;
-    _set_recovery_sweat_visible(true);
+    _status_icon_timer = 0;
+    _set_recovery_hourglass_visible(true);
 }
 
 void Goblin::_die()
 {
     _attack_hit_registry.reset();
+    _status_icon_timer = 0;
     _set_telegraph_visible(false);
     _state = State::DEAD;
     _state_timer = 0;
@@ -430,13 +480,7 @@ void Goblin::_set_telegraph_visible(bool visible)
         return;
     }
 
-    bn::fixed telegraph_y = position().y() - 13;
-    if(telegraph_y < -70)
-    {
-        telegraph_y = -70;
-    }
-
-    bn::fixed_point telegraph_position(position().x(), telegraph_y);
+    bn::fixed_point telegraph_position = status_icon_position(position());
     if(! _status_icon_sprite)
     {
         _status_icon_sprite = bn::sprite_items::enemy_telegraph.create_sprite(telegraph_position);
@@ -454,7 +498,7 @@ void Goblin::_set_telegraph_visible(bool visible)
     }
 }
 
-void Goblin::_set_recovery_sweat_visible(bool visible)
+void Goblin::_set_recovery_hourglass_visible(bool visible)
 {
     if(! visible)
     {
@@ -463,28 +507,72 @@ void Goblin::_set_recovery_sweat_visible(bool visible)
         return;
     }
 
-    bn::fixed sweat_y = position().y() - 13;
-    if(sweat_y < -70)
-    {
-        sweat_y = -70;
-    }
-
-    bn::fixed_point sweat_position(position().x(), sweat_y);
+    int frame = recovery_hourglass_frame(_state_timer);
+    bn::fixed_point hourglass_position = status_icon_position(position());
     if(! _status_icon_sprite)
     {
-        _status_icon_sprite = bn::sprite_items::goblin_recovery_sweat.create_sprite(sweat_position, _status_icon_frame);
+        _status_icon_sprite = bn::sprite_items::goblin_recovery_hourglass.create_sprite(hourglass_position, frame);
         _status_icon_sprite->set_z_order(-2);
-        _status_icon = StatusIcon::RECOVERY_SWEAT;
+        _status_icon = StatusIcon::RECOVERY_HOURGLASS;
+        _status_icon_frame = frame;
     }
     else
     {
-        if(_status_icon != StatusIcon::RECOVERY_SWEAT)
+        if(_status_icon != StatusIcon::RECOVERY_HOURGLASS ||
+           _status_icon_frame != frame)
         {
-            _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_sweat, _status_icon_frame);
-            _status_icon = StatusIcon::RECOVERY_SWEAT;
+            _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_hourglass, frame);
+            _status_icon = StatusIcon::RECOVERY_HOURGLASS;
+            _status_icon_frame = frame;
         }
-        _status_icon_sprite->set_position(sweat_position);
+        _status_icon_sprite->set_position(hourglass_position);
     }
+}
+
+void Goblin::_set_awareness_icon(StatusIcon icon)
+{
+    BN_ASSERT(icon == StatusIcon::DISCOVERY_FLASH || icon == StatusIcon::RETURN_QUESTION);
+
+    int frame = 2;
+    if(icon == StatusIcon::DISCOVERY_FLASH)
+    {
+        frame = discovery_bulb_frame(_status_icon_timer);
+    }
+    bn::fixed_point icon_position = status_icon_position(position());
+    if(! _status_icon_sprite)
+    {
+        _status_icon_sprite = bn::sprite_items::goblin_awareness_icons.create_sprite(icon_position, frame);
+        _status_icon_sprite->set_z_order(-2);
+        _status_icon = icon;
+        _status_icon_frame = frame;
+    }
+    else
+    {
+        if(_status_icon != icon || _status_icon_frame != frame)
+        {
+            _status_icon_sprite->set_item(bn::sprite_items::goblin_awareness_icons, frame);
+            _status_icon = icon;
+            _status_icon_frame = frame;
+        }
+        _status_icon_sprite->set_position(icon_position);
+    }
+}
+
+void Goblin::_update_timed_status_icon()
+{
+    if(_status_icon_timer == 0)
+    {
+        return;
+    }
+
+    --_status_icon_timer;
+    if(_status_icon_timer == 0)
+    {
+        _set_telegraph_visible(false);
+        return;
+    }
+
+    _set_awareness_icon(_status_icon);
 }
 
 void Goblin::_move_direction(Direction direction, bn::fixed speed, const WorldBox* blocking_pushbox,

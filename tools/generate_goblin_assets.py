@@ -27,15 +27,25 @@ COMMIT_PALETTE = [
     TRANSPARENT,
     (158, 86, 212),  # commit box purple
 ]
-SWEAT_PALETTE = [
+HOURGLASS_PALETTE = [
     TRANSPARENT,
-    (47, 43, 39),   # dark outline
-    (46, 159, 191), # blue-cyan fill
-    (236, 245, 238) # highlight
+    (42, 42, 42),    # dark neutral keyline
+    (232, 229, 213), # light hourglass frame
+    (126, 126, 126), # minimal glass interior
+    (192, 125, 48)   # muted-gold sand
+]
+AWARENESS_PALETTE = [
+    TRANSPARENT,
+    (42, 42, 42),    # nearly-black neutral-gray keyline
+    (82, 82, 82),    # dark neutral-gray, unlit bulb interior
+    (181, 126, 39),  # muted gold bulb outline
+    (250, 213, 47),  # bright yellow lit bulb interior and rays
+    (255, 246, 204)  # cream highlight
 ]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
-SWEAT_PATH = Path("graphics/effects/common/goblin_recovery_sweat.bmp")
+HOURGLASS_PATH = Path("graphics/effects/common/goblin_recovery_hourglass.bmp")
+AWARENESS_PATH = Path("graphics/effects/common/goblin_awareness_icons.bmp")
 DEBUG_CORNER_PATHS = {
     "hurt": Path("graphics/effects/common/collision_debug_hurt_corner.bmp"),
     "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
@@ -98,36 +108,101 @@ def generate_goblin() -> None:
 
 def generate_telegraph() -> None:
     TELEGRAPH_PATH.parent.mkdir(parents=True, exist_ok=True)
-    image = indexed((8, 16))
+    image = indexed((8, 8))
     draw = ImageDraw.Draw(image)
-    draw.rectangle((2, 0, 5, 10), fill=1)
-    draw.rectangle((3, 1, 4, 9), fill=4)
-    draw.rectangle((2, 12, 5, 15), fill=1)
-    draw.rectangle((3, 13, 4, 14), fill=5)
+    # A compact, high-contrast 7px exclamation mark with a one-pixel gap.
+    draw.rectangle((2, 0, 5, 4), fill=1)
+    draw.rectangle((3, 0, 4, 3), fill=4)
+    draw.rectangle((2, 6, 5, 7), fill=1)
+    draw.rectangle((3, 6, 4, 6), fill=5)
     image.save(TELEGRAPH_PATH)
 
 
-def generate_recovery_sweat() -> None:
-    SWEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
+def generate_recovery_hourglass() -> None:
+    HOURGLASS_PATH.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("P", (8, 16), 0)
-    values = [component for color in SWEAT_PALETTE for component in color]
+    values = [component for color in HOURGLASS_PALETTE for component in color]
     image.putpalette(values + [0] * (768 - len(values)))
     draw = ImageDraw.Draw(image)
 
-    # Frame A: a large, asymmetric temple sweat drop with two short panic lines.
-    draw.point((0, 3), fill=1)
-    draw.point((0, 5), fill=1)
-    draw.polygon(((3, 0), (5, 1), (6, 3), (6, 5), (4, 7), (2, 6), (1, 4), (2, 2)), fill=1)
-    draw.polygon(((3, 1), (4, 2), (5, 3), (5, 4), (4, 6), (3, 5), (2, 4), (3, 2)), fill=2)
-    draw.point((3, 2), fill=3)
+    # Both frames keep the same wide-top/wide-bottom X silhouette and narrow waist.
+    for offset_y in (0, 8):
+        draw.line(((1, offset_y), (6, offset_y)), fill=1)
+        draw.line(((2, offset_y), (5, offset_y)), fill=2)
+        draw.line(((1, offset_y + 7), (6, offset_y + 7)), fill=1)
+        draw.line(((2, offset_y + 7), (5, offset_y + 7)), fill=2)
+        draw.point((1, offset_y + 1), fill=1)
+        draw.point((2, offset_y + 2), fill=1)
+        draw.point((3, offset_y + 3), fill=1)
+        draw.point((6, offset_y + 1), fill=1)
+        draw.point((5, offset_y + 2), fill=1)
+        draw.point((4, offset_y + 3), fill=1)
+        draw.point((3, offset_y + 4), fill=1)
+        draw.point((2, offset_y + 5), fill=1)
+        draw.point((1, offset_y + 6), fill=1)
+        draw.point((4, offset_y + 4), fill=1)
+        draw.point((5, offset_y + 5), fill=1)
+        draw.point((6, offset_y + 6), fill=1)
 
-    # Frame B: the same drop leans one pixel outward and down instead of falling away.
-    draw.point((0, 11), fill=1)
-    draw.point((1, 13), fill=1)
-    draw.polygon(((4, 9), (6, 10), (7, 12), (7, 14), (5, 15), (3, 14), (2, 12), (3, 10)), fill=1)
-    draw.polygon(((4, 10), (5, 11), (6, 12), (6, 13), (5, 14), (4, 13), (3, 12), (4, 11)), fill=2)
+    # Frame 0 starts with sand in the upper chamber; frame 1 finishes in the lower chamber.
+    draw.line(((2, 1), (5, 1)), fill=4)
+    draw.line(((3, 2), (4, 2)), fill=4)
+    draw.point((3, 3), fill=4)
+    draw.point((4, 5), fill=3)
     draw.point((4, 11), fill=3)
-    image.save(SWEAT_PATH)
+    draw.point((3, 12), fill=4)
+    draw.line(((3, 13), (4, 13)), fill=4)
+    image.save(HOURGLASS_PATH)
+
+
+def generate_awareness_icons() -> None:
+    AWARENESS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("P", (8, 24), 0)
+    values = [component for color in AWARENESS_PALETTE for component in color]
+    image.putpalette(values + [0] * (768 - len(values)))
+    draw = ImageDraw.Draw(image)
+
+    # Frames 0 and 1 share a gold outline, a dark right-and-bottom keyline, and a compact socket.
+    for offset_y, interior_color in ((0, 2), (8, 4)):
+        draw.point((3, offset_y), fill=3)
+        draw.point((4, offset_y), fill=3)
+        draw.point((2, offset_y + 1), fill=3)
+        draw.point((5, offset_y + 1), fill=3)
+        draw.point((1, offset_y + 2), fill=3)
+        draw.point((1, offset_y + 3), fill=3)
+        draw.point((2, offset_y + 4), fill=3)
+        draw.point((3, offset_y + 5), fill=3)
+        draw.point((2, offset_y + 2), fill=interior_color)
+        draw.rectangle(((3, offset_y + 1), (4, offset_y + 4)), fill=interior_color)
+        draw.point((5, offset_y + 2), fill=interior_color)
+        draw.point((2, offset_y + 3), fill=interior_color)
+        draw.point((5, offset_y + 3), fill=interior_color)
+        draw.point((6, offset_y + 2), fill=1)
+        draw.point((6, offset_y + 3), fill=1)
+        draw.point((5, offset_y + 4), fill=1)
+        draw.point((4, offset_y + 5), fill=1)
+        draw.line(((2, offset_y + 6), (5, offset_y + 6)), fill=1)
+        draw.line(((3, offset_y + 7), (4, offset_y + 7)), fill=2)
+
+    # Frame 1: only the lit bulb gains four short gold rays and a cream highlight.
+    draw.point((0, 9), fill=3)
+    draw.point((7, 9), fill=3)
+    draw.point((0, 12), fill=3)
+    draw.point((7, 12), fill=3)
+    draw.point((3, 9), fill=5)
+
+    # Frame 2: a bold question mark with a separate dot for readable silhouette.
+    draw.line(((2, 17), (5, 17)), fill=1)
+    draw.point((1, 18), fill=1)
+    draw.point((6, 18), fill=1)
+    draw.point((5, 19), fill=1)
+    draw.point((4, 20), fill=1)
+    draw.point((4, 21), fill=1)
+    draw.point((4, 23), fill=1)
+    draw.line(((2, 18), (5, 18)), fill=4)
+    draw.point((5, 19), fill=4)
+    draw.point((4, 20), fill=4)
+    image.save(AWARENESS_PATH)
 
 
 def generate_debug_corner(path: Path, color_index: int, dotted: bool, palette: list[tuple[int, int, int]] = DEBUG_PALETTE) -> None:
@@ -158,17 +233,19 @@ def validate(path: Path, size: tuple[int, int]) -> None:
 def main() -> None:
     generate_goblin()
     generate_telegraph()
-    generate_recovery_sweat()
+    generate_recovery_hourglass()
+    generate_awareness_icons()
     generate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 1, False, COMMIT_PALETTE)
     validate(GOBLIN_PATH, (16, 128))
-    validate(TELEGRAPH_PATH, (8, 16))
-    validate(SWEAT_PATH, (8, 16))
+    validate(TELEGRAPH_PATH, (8, 8))
+    validate(HOURGLASS_PATH, (8, 16))
+    validate(AWARENESS_PATH, (8, 24))
     for path in DEBUG_CORNER_PATHS.values():
         validate(path, (8, 8))
-    print("generated indexed 8bpp goblin, enemy telegraph, recovery sweat, and collision debug corners")
+    print("generated indexed 8bpp goblin, enemy telegraph, recovery hourglass, awareness icons, and collision debug corners")
 
 
 if __name__ == "__main__":
