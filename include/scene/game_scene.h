@@ -3,7 +3,7 @@
 
 #include "character/player_controller.h"
 #include "character/swordsman.h"
-#include "character/training_dummy_manager.h"
+#include "character/goblin.h"
 #include "combat/hit_effect_manager.h"
 #include "world/battlefield.h"
 
@@ -20,7 +20,7 @@ private:
     Swordsman _player;
     PlayerController _player_controller;
     MovementBounds _player_bounds;
-    TrainingDummyManager _training_dummies;
+    Goblin _goblin;
     HitEffectManager _hit_effects;
 };
 

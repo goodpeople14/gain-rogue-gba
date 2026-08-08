@@ -31,6 +31,7 @@ DATA             :=
 GRAPHICS         := graphics/characters/heroes/gunner \
                     graphics/characters/heroes/swordsman \
                     graphics/characters/enemies/caveman \
+                    graphics/characters/enemies/goblin \
                     graphics/characters/enemies/ninja \
                     graphics/effects/attacks/swordsman \
                     graphics/effects/common \
