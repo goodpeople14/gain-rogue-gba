@@ -41,8 +41,8 @@ namespace
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
     constexpr bn::fixed diagonal_ratio(0.70710678f);
     constexpr CollisionBody goblin_collision_body = {
-        { { 0, 1, 10, 10 } },
-        { { 0, 3, 8, 8 } }
+        { { 0, 1, 8, 10 } },
+        { { 0, 4, 6, 6 } }
     };
     constexpr bn::array<Direction, 4> roam_directions = {
         Direction::RIGHT, Direction::DOWN, Direction::LEFT, Direction::UP
