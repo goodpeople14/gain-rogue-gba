@@ -27,8 +27,15 @@ COMMIT_PALETTE = [
     TRANSPARENT,
     (158, 86, 212),  # commit box purple
 ]
+SWEAT_PALETTE = [
+    TRANSPARENT,
+    (47, 43, 39),   # dark outline
+    (46, 159, 191), # blue-cyan fill
+    (236, 245, 238) # highlight
+]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
+SWEAT_PATH = Path("graphics/effects/common/goblin_recovery_sweat.bmp")
 DEBUG_CORNER_PATHS = {
     "hurt": Path("graphics/effects/common/collision_debug_hurt_corner.bmp"),
     "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
@@ -100,6 +107,29 @@ def generate_telegraph() -> None:
     image.save(TELEGRAPH_PATH)
 
 
+def generate_recovery_sweat() -> None:
+    SWEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("P", (8, 16), 0)
+    values = [component for color in SWEAT_PALETTE for component in color]
+    image.putpalette(values + [0] * (768 - len(values)))
+    draw = ImageDraw.Draw(image)
+
+    # Frame A: a large, asymmetric temple sweat drop with two short panic lines.
+    draw.point((0, 3), fill=1)
+    draw.point((0, 5), fill=1)
+    draw.polygon(((3, 0), (5, 1), (6, 3), (6, 5), (4, 7), (2, 6), (1, 4), (2, 2)), fill=1)
+    draw.polygon(((3, 1), (4, 2), (5, 3), (5, 4), (4, 6), (3, 5), (2, 4), (3, 2)), fill=2)
+    draw.point((3, 2), fill=3)
+
+    # Frame B: the same drop leans one pixel outward and down instead of falling away.
+    draw.point((0, 11), fill=1)
+    draw.point((1, 13), fill=1)
+    draw.polygon(((4, 9), (6, 10), (7, 12), (7, 14), (5, 15), (3, 14), (2, 12), (3, 10)), fill=1)
+    draw.polygon(((4, 10), (5, 11), (6, 12), (6, 13), (5, 14), (4, 13), (3, 12), (4, 11)), fill=2)
+    draw.point((4, 11), fill=3)
+    image.save(SWEAT_PATH)
+
+
 def generate_debug_corner(path: Path, color_index: int, dotted: bool, palette: list[tuple[int, int, int]] = DEBUG_PALETTE) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("P", (8, 8), 0)
@@ -128,15 +158,17 @@ def validate(path: Path, size: tuple[int, int]) -> None:
 def main() -> None:
     generate_goblin()
     generate_telegraph()
+    generate_recovery_sweat()
     generate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 1, False, COMMIT_PALETTE)
     validate(GOBLIN_PATH, (16, 128))
     validate(TELEGRAPH_PATH, (8, 16))
+    validate(SWEAT_PATH, (8, 16))
     for path in DEBUG_CORNER_PATHS.values():
         validate(path, (8, 8))
-    print("generated indexed 8bpp goblin, enemy telegraph, and collision debug corners")
+    print("generated indexed 8bpp goblin, enemy telegraph, recovery sweat, and collision debug corners")
 
 
 if __name__ == "__main__":
