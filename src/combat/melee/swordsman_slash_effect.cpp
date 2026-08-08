@@ -46,14 +46,17 @@ void SwordsmanSlashEffect::play(const AttackContext& context)
     _direction = context.direction;
     _frame = 0;
     _ticks_in_frame = 0;
+    _sprite->set_z_order(-1);
 }
 
-void SwordsmanSlashEffect::update()
+void SwordsmanSlashEffect::update(const bn::fixed_point& position)
 {
     if(! _sprite)
     {
         return;
     }
+
+    _sprite->set_position(position);
 
     ++_ticks_in_frame;
 

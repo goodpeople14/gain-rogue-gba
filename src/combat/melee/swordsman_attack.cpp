@@ -18,7 +18,7 @@ bool SwordsmanAttack::try_attack(const AttackContext& context)
     return true;
 }
 
-void SwordsmanAttack::update()
+void SwordsmanAttack::update(const bn::fixed_point& owner_position)
 {
     if(_cooldown_remaining > 0)
     {
@@ -26,7 +26,7 @@ void SwordsmanAttack::update()
     }
 
     _hitbox.update();
-    _slash_effect.update();
+    _slash_effect.update(owner_position);
 }
 
 int SwordsmanAttack::try_hit(int target_id, const bn::fixed_point& target_position,

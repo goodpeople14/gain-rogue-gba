@@ -9,6 +9,7 @@
 #include "world/battlefield.h"
 
 class SwordsmanAttack;
+class HitEffectManager;
 
 class TrainingDummyManager
 {
@@ -21,7 +22,7 @@ public:
 
     void enter();
     void update(const WorldBox& player_pushbox);
-    void resolve_attack(SwordsmanAttack& attack);
+    void resolve_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
 
     [[nodiscard]] int active_count() const;
     [[nodiscard]] WorldBoxList<max_dummies> active_pushboxes() const;

@@ -1,433 +1,287 @@
 #!/usr/bin/env python3
-"""Generate and validate the swordsman's five-frame, eight-direction slash effects."""
+"""Generate combined sword and preserved slash-trail attack overlays."""
 
 from __future__ import annotations
 
-import argparse
-import hashlib
 import json
-from collections import deque
+import math
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 FRAME_SIZE = 64
 FRAME_COUNT = 5
 SHEET_SIZE = (FRAME_SIZE * FRAME_COUNT, FRAME_SIZE)
-GREEN = (0, 255, 0)
-PALETTE = {
-    "dark": (59, 38, 48),
-    "orange": (212, 122, 37),
-    "gold": (242, 184, 75),
-    "pale": (255, 233, 166),
-    "white": (255, 248, 231),
+OUTPUT = Path("graphics/effects/attacks/swordsman")
+TRAIL_SOURCE = Path("tools/assets/swordsman_slash_trails")
+REPORT = Path("tools/swordsman_slash_validation.json")
+PREVIEW_OUTPUT = Path("tools/previews/swordsman_attack")
+TRANSPARENT = (0, 255, 0)
+TRAIL_COLORS = [
+    (59, 38, 48), (212, 122, 37), (242, 184, 75),
+    (255, 233, 166), (255, 248, 231),
+]
+SWORD_COLORS = [
+    (49, 34, 42), (113, 65, 39), (225, 164, 48),
+    (154, 166, 174), (239, 240, 225),
+]
+COLORS = [TRANSPARENT, *TRAIL_COLORS, *SWORD_COLORS]
+COLOR_INDEX = {color: index for index, color in enumerate(COLORS)}
+
+# Screen-space vectors in Direction enum order. Right-facing variants are not
+# generated from these vectors: they are same-frame horizontal mirrors of the
+# matching left-facing animation, preserving time while reflecting space.
+DIRECTIONS = {
+    "down": (0, 1),
+    "down_left": (-1, 1),
+    "left": (-1, 0),
+    "up_left": (-1, -1),
+    "up": (0, -1),
 }
-INDEXED_PALETTE = [GREEN, *PALETTE.values()]
-PALETTE_INDEX = {color: index for index, color in enumerate(INDEXED_PALETTE)}
-CENTER = (24, 24, 39, 39)
-
-
-def points(*items: tuple[int, int]) -> list[tuple[int, int]]:
-    return list(items)
-
-
-# Approved slash_down v2 is preserved byte-for-byte at the logical pixel level.
-DOWN = [
-    {"dark": points((23, 40)), "gold": points((22, 40)), "pale": points((21, 40))},
-    {
-        "dark": points((17, 45), (18, 44), (19, 43), (20, 43), (21, 42), (22, 42),
-                       (23, 42), (24, 42)),
-        "orange": points((21, 43), (22, 42), (23, 42)),
-        "gold": points((24, 42), (25, 42)),
-    },
-    {
-        "dark": points((18, 48), (19, 47), (20, 46), (21, 46), (22, 45), (23, 44),
-                       (24, 44), (25, 44), (26, 44)),
-        "orange": points((20, 47), (21, 46), (22, 45), (23, 45), (24, 45)),
-        "gold": points((23, 46), (24, 45), (25, 44), (26, 44), (27, 44), (28, 44)),
-        "pale": points((27, 44), (28, 44), (29, 43), (30, 43)),
-        "white": points((30, 43), (31, 42), (32, 42), (33, 42)),
-    },
-    {
-        "dark": points((16, 48), (17, 48), (18, 47), (19, 47), (20, 46), (21, 46),
-                       (22, 45), (23, 45), (24, 44), (25, 44)),
-        "orange": points((18, 46), (19, 46), (20, 45), (21, 45), (22, 44), (23, 44),
-                         (24, 43), (25, 43), (26, 43), (27, 42)),
-        "gold": points((24, 44), (25, 44), (26, 43), (27, 43), (28, 42), (29, 42),
-                       (30, 42), (31, 42), (32, 42), (33, 42), (34, 42), (35, 42)),
-        "pale": points((28, 43), (29, 43), (30, 42), (31, 42), (32, 42), (33, 42),
-                       (34, 42), (35, 42), (36, 43), (37, 43), (38, 43), (39, 44)),
-        "white": points((32, 41), (33, 41), (34, 41), (35, 41), (36, 42), (37, 42),
-                        (38, 42), (39, 43), (40, 43), (41, 44), (42, 44), (43, 45),
-                        (44, 45), (45, 46), (46, 46), (47, 47)),
-    },
-    {
-        "orange": points((19, 47), (20, 47)),
-        "gold": points((21, 46), (22, 46), (23, 45), (45, 48)),
-        "pale": points((34, 43), (35, 43)),
-        "white": points((40, 45)),
-    },
-]
-
-LEFT = [
-    {"dark": points((23, 40)), "gold": points((23, 39)), "pale": points((23, 38))},
-    {
-        "dark": points((23, 39), (22, 38), (22, 37), (21, 36), (21, 35), (21, 34),
-                       (20, 33), (20, 32)),
-        "orange": points((22, 35), (21, 34), (21, 33)),
-        "gold": points((20, 32), (20, 31)),
-    },
-    {
-        "dark": points((23, 41), (22, 40), (21, 39), (21, 38), (20, 37), (20, 36),
-                       (19, 35), (19, 34), (18, 33)),
-        "orange": points((22, 39), (21, 38), (21, 37), (20, 36), (20, 35)),
-        "gold": points((21, 36), (20, 35), (20, 34), (19, 33), (19, 32), (19, 31)),
-        "pale": points((19, 32), (18, 31), (18, 30), (18, 29)),
-        "white": points((18, 29), (17, 28), (17, 27), (17, 26)),
-    },
-    {
-        "dark": points((23, 47), (23, 46), (22, 45), (22, 44), (21, 43), (21, 42),
-                       (20, 41), (20, 40), (19, 39), (19, 38)),
-        "orange": points((22, 45), (21, 44), (21, 43), (20, 42), (20, 41), (19, 40),
-                         (19, 39), (18, 38), (18, 37), (17, 36)),
-        "gold": points((20, 39), (20, 38), (19, 37), (19, 36), (18, 35), (18, 34),
-                       (18, 33), (18, 32), (18, 31), (18, 30), (18, 29), (18, 28)),
-        "pale": points((19, 35), (19, 34), (18, 33), (18, 32), (18, 31), (18, 30),
-                       (18, 29), (18, 28), (19, 27), (19, 26), (19, 25), (20, 24)),
-        "white": points((17, 31), (17, 30), (17, 29), (17, 28), (18, 27), (18, 26),
-                        (18, 25), (19, 24), (19, 23), (20, 22), (20, 21), (21, 20),
-                        (21, 19), (22, 18), (22, 17), (23, 16)),
-    },
-    {
-        "orange": points((22, 44), (22, 43)),
-        "gold": points((21, 42), (21, 41), (20, 40), (23, 18)),
-        "pale": points((19, 29), (19, 28)),
-        "white": points((18, 23)),
-    },
-]
-
-UP = [
-    {"dark": points((23, 23)), "gold": points((22, 23)), "pale": points((21, 23))},
-    {
-        "dark": points((17, 18), (18, 19), (19, 20), (20, 20), (21, 20), (22, 20),
-                       (23, 21), (24, 21)),
-        "orange": points((21, 20), (22, 21), (23, 21)),
-        "gold": points((24, 21), (25, 21)),
-    },
-    {
-        "dark": points((18, 15), (19, 16), (20, 17), (21, 17), (22, 17), (23, 18),
-                       (24, 18), (25, 19), (26, 19)),
-        "orange": points((20, 16), (21, 17), (22, 17), (23, 18), (24, 18)),
-        "gold": points((23, 17), (24, 18), (25, 18), (26, 19), (27, 19), (28, 19)),
-        "pale": points((27, 19), (28, 19), (29, 20), (30, 20)),
-        "white": points((30, 20), (31, 21), (32, 21), (33, 21)),
-    },
-    {
-        "dark": points((16, 15), (17, 15), (18, 16), (19, 16), (20, 17), (21, 17),
-                       (22, 18), (23, 18), (24, 19), (25, 19)),
-        "orange": points((18, 17), (19, 17), (20, 18), (21, 18), (22, 19), (23, 19),
-                         (24, 20), (25, 20), (26, 20), (27, 21)),
-        "gold": points((24, 19), (25, 19), (26, 20), (27, 20), (28, 21), (29, 21),
-                       (30, 21), (31, 21), (32, 21), (33, 21), (34, 21), (35, 21)),
-        "pale": points((28, 20), (29, 20), (30, 21), (31, 21), (32, 21), (33, 21),
-                       (34, 21), (35, 21), (36, 20), (37, 20), (38, 20), (39, 19)),
-        "white": points((32, 22), (33, 22), (34, 22), (35, 22), (36, 21), (37, 21),
-                        (38, 21), (39, 20), (40, 20), (41, 19), (42, 19), (43, 18),
-                        (44, 18), (45, 17), (46, 17), (47, 16)),
-    },
-    {
-        "orange": points((19, 16), (20, 16)),
-        "gold": points((21, 17), (22, 17), (23, 18), (45, 15)),
-        "pale": points((34, 20), (35, 20)),
-        "white": points((40, 18)),
-    },
-]
-
-# Diagonal curves are authored against their three-rectangle unions, not rotated.
-DOWN_LEFT = [
-    {"dark": points((23, 39)), "gold": points((22, 40)), "pale": points((21, 40))},
-    {
-        "dark": points((23, 39), (22, 40), (21, 41), (20, 42), (19, 43), (18, 44)),
-        "orange": points((21, 40), (20, 41), (19, 42)),
-        "gold": points((18, 43), (17, 44)),
-    },
-    {
-        "dark": points((23, 35), (22, 36), (21, 37), (20, 38), (19, 39), (18, 40),
-                       (17, 41), (16, 42)),
-        "orange": points((21, 37), (20, 38), (19, 39), (18, 40)),
-        "gold": points((19, 40), (18, 41), (17, 42), (16, 43), (15, 44)),
-        "pale": points((17, 43), (16, 44), (15, 45)),
-        "white": points((15, 46), (14, 47), (13, 48)),
-    },
-    {
-        "dark": points((23, 32), (22, 33), (21, 34), (20, 35), (19, 36), (18, 37),
-                       (17, 38), (16, 39), (15, 40), (14, 41), (13, 42), (12, 43),
-                       (11, 44), (10, 45), (9, 46), (8, 47)),
-        "orange": points((22, 35), (21, 36), (20, 37), (19, 38), (18, 39), (17, 40),
-                         (16, 41), (15, 42), (14, 43), (13, 44)),
-        "gold": points((20, 38), (19, 39), (18, 40), (17, 41), (16, 42), (15, 43),
-                       (14, 44), (13, 45), (12, 46)),
-        "pale": points((18, 41), (17, 42), (16, 43), (15, 44), (14, 45), (13, 46),
-                       (12, 47), (11, 48)),
-        "white": points((16, 44), (15, 45), (14, 46), (13, 47), (12, 48), (11, 49),
-                        (10, 50), (9, 51), (8, 52)),
-    },
-    {
-        "orange": points((21, 36), (20, 37)),
-        "gold": points((18, 40), (17, 41), (10, 50)),
-        "pale": points((14, 45), (13, 46)),
-        "white": points(),
-    },
-]
-
-UP_LEFT = [
-    {"dark": points((23, 24)), "gold": points((22, 23)), "pale": points((21, 23))},
-    {
-        "dark": points((23, 24), (22, 23), (21, 22), (20, 21), (19, 20), (18, 19)),
-        "orange": points((21, 23), (20, 22), (19, 21)),
-        "gold": points((18, 20), (17, 19)),
-    },
-    {
-        "dark": points((23, 28), (22, 27), (21, 26), (20, 25), (19, 24), (18, 23),
-                       (17, 22), (16, 21)),
-        "orange": points((21, 26), (20, 25), (19, 24), (18, 23)),
-        "gold": points((19, 23), (18, 22), (17, 21), (16, 20), (15, 19)),
-        "pale": points((17, 20), (16, 19), (15, 18)),
-        "white": points((15, 17), (14, 16), (13, 15)),
-    },
-    {
-        "dark": points((23, 31), (22, 30), (21, 29), (20, 28), (19, 27), (18, 26),
-                       (17, 25), (16, 24), (15, 23), (14, 22), (13, 21), (12, 20),
-                       (11, 19), (10, 18), (9, 17), (8, 16)),
-        "orange": points((22, 28), (21, 27), (20, 26), (19, 25), (18, 24), (17, 23),
-                         (16, 22), (15, 21), (14, 20), (13, 19)),
-        "gold": points((20, 25), (19, 24), (18, 23), (17, 22), (16, 21), (15, 20),
-                       (14, 19), (13, 18), (12, 17)),
-        "pale": points((18, 22), (17, 21), (16, 20), (15, 19), (14, 18), (13, 17),
-                       (12, 16), (11, 15)),
-        "white": points((16, 19), (15, 18), (14, 17), (13, 16), (12, 15), (11, 14),
-                        (10, 13), (9, 12), (8, 11)),
-    },
-    {
-        "orange": points((21, 27), (20, 26)),
-        "gold": points((18, 23), (17, 22), (10, 13)),
-        "pale": points((14, 18), (13, 17)),
-        "white": points(),
-    },
-]
-
-AUTHORED = {
-    "down": DOWN,
-    "down_left": DOWN_LEFT,
-    "left": LEFT,
-    "up_left": UP_LEFT,
-    "up": UP,
+MIRRORS = {
+    "up_right": "up_left",
+    "right": "left",
+    "down_right": "down_left",
 }
-MIRRORS = {"up_right": "up_left", "right": "left", "down_right": "down_left"}
-ORDER = ["down", "down_left", "left", "up_left", "up", "up_right", "right", "down_right"]
+ORDER = ["down", "down_left", "left", "up_left", "up",
+         "up_right", "right", "down_right"]
+SWING_ANGLES = (70, 35, 0, -35, -70)
+CENTER = (31.5, 31.5)
 
 
-def mirror(frames):
-    return [
-        {color: [(FRAME_SIZE - 1 - x, y) for x, y in coords] for color, coords in frame.items()}
-        for frame in frames
-    ]
+def palette_data() -> list[int]:
+    values = [component for color in COLORS for component in color]
+    return values + [0] * (768 - len(values))
 
 
-def allowed(direction: str, x: int, y: int) -> bool:
-    if direction == "down":
-        return 16 <= x <= 47 and 40 <= y <= 55
-    if direction == "up":
-        return 16 <= x <= 47 and 8 <= y <= 23
-    if direction == "left":
-        return 8 <= x <= 23 and 16 <= y <= 47
-    if direction == "right":
-        return 40 <= x <= 55 and 16 <= y <= 47
-    if direction == "down_left":
-        return ((8 <= x <= 23 and 40 <= y <= 55) or
-                (24 <= x <= 31 and 40 <= y <= 55) or
-                (8 <= x <= 23 and 32 <= y <= 39))
-    if direction == "up_left":
-        return ((8 <= x <= 23 and 8 <= y <= 23) or
-                (24 <= x <= 31 and 8 <= y <= 23) or
-                (8 <= x <= 23 and 24 <= y <= 31))
-    if direction == "down_right":
-        return allowed("down_left", 63 - x, y)
-    if direction == "up_right":
-        return allowed("up_left", 63 - x, y)
-    raise ValueError(direction)
+def point_at(direction: tuple[float, float], radius: float) -> tuple[int, int]:
+    return (round(CENTER[0] + direction[0] * radius),
+            round(CENTER[1] + direction[1] * radius))
 
 
-def components(coords: set[tuple[int, int]]) -> int:
-    remaining = set(coords)
-    count = 0
-    while remaining:
-        count += 1
-        queue = deque([remaining.pop()])
-        while queue:
-            x, y = queue.popleft()
-            for dx, dy in ((-1, -1), (0, -1), (1, -1), (-1, 0),
-                           (1, 0), (-1, 1), (0, 1), (1, 1)):
-                point = (x + dx, y + dy)
-                if point in remaining:
-                    remaining.remove(point)
-                    queue.append(point)
-    return count
+def rotate(vector: tuple[int, int], degrees: int) -> tuple[float, float]:
+    length = math.hypot(*vector)
+    x = vector[0] / length
+    y = vector[1] / length
+    radians = math.radians(degrees)
+    cosine = math.cos(radians)
+    sine = math.sin(radians)
+    return (x * cosine - y * sine, x * sine + y * cosine)
 
 
-def render(direction: str, frames_data):
-    frames = []
-    reports = []
-    for frame_number, frame_data in enumerate(frames_data, 1):
-        frame = Image.new("RGB", (FRAME_SIZE, FRAME_SIZE), GREEN)
-        pixels = frame.load()
-        for color_name, coords in frame_data.items():
-            for x, y in coords:
-                assert allowed(direction, x, y), (direction, frame_number, x, y)
-                assert not (CENTER[0] <= x <= CENTER[2] and CENTER[1] <= y <= CENTER[3])
-                pixels[x, y] = PALETTE[color_name]
-        opaque = {(x, y) for y in range(FRAME_SIZE) for x in range(FRAME_SIZE)
-                  if pixels[x, y] != GREEN}
-        assert opaque
-        x_values = [x for x, _ in opaque]
-        y_values = [y for _, y in opaque]
-        bbox = [min(x_values), min(y_values), max(x_values), max(y_values)]
-        width = bbox[2] - bbox[0] + 1
-        height = bbox[3] - bbox[1] + 1
-        if direction in ("down", "up"):
-            assert width <= 32
-        if direction in ("left", "right"):
-            assert height <= 32
-        component_count = components(opaque)
-        independent_particles = max(0, component_count - 1)
-        assert independent_particles <= 3
-        reports.append({
-            "frame": frame_number,
-            "bbox_inclusive": bbox,
-            "width": width,
-            "height": height,
-            "effect_pixels": len(opaque),
-            "connected_components": component_count,
-            "independent_particles": independent_particles,
-            "sha256_rgb": hashlib.sha256(frame.tobytes()).hexdigest(),
-        })
-        frames.append(frame)
-    return frames, reports
+def render_sword(forward: tuple[int, int], angle: int) -> tuple[Image.Image, dict[str, object]]:
+    direction = rotate(forward, angle)
+    perpendicular = (-direction[1], direction[0])
+    frame = Image.new("RGB", (FRAME_SIZE, FRAME_SIZE), TRANSPARENT)
+    draw = ImageDraw.Draw(frame)
+
+    grip_start = point_at(direction, 5)
+    grip_end = point_at(direction, 11)
+    draw.line((grip_start, grip_end), fill=SWORD_COLORS[0], width=5)
+    draw.line((grip_start, grip_end), fill=SWORD_COLORS[1], width=3)
+    pommel = point_at(direction, 4)
+    draw.rectangle((pommel[0] - 2, pommel[1] - 2, pommel[0] + 2, pommel[1] + 2),
+                   fill=SWORD_COLORS[0])
+    draw.rectangle((pommel[0] - 1, pommel[1] - 1, pommel[0] + 1, pommel[1] + 1),
+                   fill=SWORD_COLORS[2])
+
+    guard_center = point_at(direction, 12)
+    guard_a = (round(guard_center[0] + perpendicular[0] * 4),
+               round(guard_center[1] + perpendicular[1] * 4))
+    guard_b = (round(guard_center[0] - perpendicular[0] * 4),
+               round(guard_center[1] - perpendicular[1] * 4))
+    draw.line((guard_a, guard_b), fill=SWORD_COLORS[0], width=5)
+    draw.line((guard_a, guard_b), fill=SWORD_COLORS[2], width=3)
+
+    blade_start = point_at(direction, 13)
+    blade_end = point_at(direction, 26)
+    draw.line((blade_start, blade_end), fill=SWORD_COLORS[0], width=7)
+    draw.line((blade_start, blade_end), fill=SWORD_COLORS[3], width=5)
+    highlight_start = (round(blade_start[0] - perpendicular[0]),
+                       round(blade_start[1] - perpendicular[1]))
+    highlight_end = (round(blade_end[0] - perpendicular[0]),
+                     round(blade_end[1] - perpendicular[1]))
+    draw.line((highlight_start, highlight_end), fill=SWORD_COLORS[4], width=2)
+    sword_tip = point_at(direction, 28)
+    draw.line((blade_end, sword_tip), fill=SWORD_COLORS[0], width=3)
+    draw.point(point_at(direction, 27), fill=SWORD_COLORS[4])
+    return frame, {
+        "sword_start": list(grip_start),
+        "sword_end": list(sword_tip),
+        "rotation_center": list(CENTER),
+        "swing_angle": angle,
+    }
 
 
-def indexed_image(image: Image.Image) -> Image.Image:
-    """Convert an authored RGB image to the fixed Butano BMP palette without quantization."""
-    if image.mode != "RGB":
-        raise ValueError(f"Expected RGB image, got {image.mode}")
+def mirror_frame(frame: Image.Image, metadata: dict[str, object]) -> tuple[Image.Image, dict[str, object]]:
+    result = frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    mirrored = dict(metadata)
+    for field in ("sword_start", "sword_end"):
+        x, y = metadata[field]
+        mirrored[field] = [FRAME_SIZE - 1 - x, y]
+    mirrored["rotation_center"] = list(CENTER)
+    return result, mirrored
 
-    indices = []
-    for color in image.getdata():
-        try:
-            indices.append(PALETTE_INDEX[color])
-        except KeyError as error:
-            raise ValueError(f"Unexpected RGB color: {color}") from error
 
-    result = Image.new("P", image.size)
-    palette_data = []
-    for color in INDEXED_PALETTE:
-        palette_data.extend(color)
-    palette_data.extend([0] * (768 - len(palette_data)))
-    result.putpalette(palette_data)
-    result.putdata(indices)
+def load_trail_frames(direction: str) -> list[Image.Image]:
+    path = TRAIL_SOURCE / f"swordsman_slash_{direction}.bmp"
+    raw = path.read_bytes()
+    if int.from_bytes(raw[28:30], "little") != 8:
+        raise ValueError(f"trail is not indexed 8bpp: {path}")
+    with Image.open(path) as sheet:
+        if sheet.size != SHEET_SIZE:
+            raise ValueError(f"invalid trail sheet size: {path}: {sheet.size}")
+        return [sheet.crop((index * FRAME_SIZE, 0, (index + 1) * FRAME_SIZE, FRAME_SIZE)).convert("RGB")
+                for index in range(FRAME_COUNT)]
+
+
+def effect_bbox(frame: Image.Image, allowed_colors: set[tuple[int, int, int]]) -> list[int]:
+    pixels = [(x, y) for y in range(FRAME_SIZE) for x in range(FRAME_SIZE)
+              if frame.getpixel((x, y)) in allowed_colors]
+    if not pixels:
+        raise ValueError("required effect layer is empty")
+    xs = [point[0] for point in pixels]
+    ys = [point[1] for point in pixels]
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
+def composite(trail: Image.Image, sword: Image.Image) -> Image.Image:
+    # The preserved trail is the luminous foreground edge; placing it last
+    # keeps even its sparse preparation/recovery pixels visible beside the sword.
+    result = sword.copy()
+    mask = Image.new("1", trail.size)
+    mask.putdata([pixel != TRANSPARENT for pixel in trail.get_flattened_data()])
+    result.paste(trail, mask=mask)
     return result
 
 
-def validate_indexed_bmp(path: Path) -> None:
-    if path.read_bytes()[28:30] != (8).to_bytes(2, "little"):
-        raise ValueError(f"Expected 8bpp BMP: {path}")
+def indexed(image: Image.Image) -> Image.Image:
+    result = Image.new("P", image.size)
+    result.putpalette(palette_data())
+    try:
+        result.putdata([COLOR_INDEX[pixel] for pixel in image.get_flattened_data()])
+    except KeyError as error:
+        raise ValueError(f"unexpected composite color: {error.args[0]}") from error
+    return result
 
-    with Image.open(path) as image:
-        if image.size != SHEET_SIZE:
-            raise ValueError(f"Unexpected sheet size: {path}: {image.size}")
-        if image.mode != "P":
-            raise ValueError(f"Expected palette BMP: {path}: {image.mode}")
-        palette = image.getpalette()
 
-        if palette is None:
-            raise ValueError(f"Missing BMP palette: {path}")
+def validate_sheet(path: Path, frames: list[Image.Image], metadata: list[dict[str, object]]) -> dict[str, object]:
+    raw = path.read_bytes()
+    bit_depth = int.from_bytes(raw[28:30], "little")
+    with Image.open(path) as sheet:
+        if sheet.mode != "P" or sheet.size != SHEET_SIZE or bit_depth != 8:
+            raise ValueError(f"invalid output sheet: {path}: {sheet.mode} {sheet.size} {bit_depth}bpp")
+        used = set(sheet.get_flattened_data())
+        if not used.issubset(set(range(len(COLORS)))):
+            raise ValueError(f"unexpected output palette index: {path}")
 
-        for index, color in enumerate(INDEXED_PALETTE):
-            start = index * 3
-            if tuple(palette[start:start + 3]) != color:
-                raise ValueError(f"Unexpected palette index {index}: {path}")
+    frame_report = []
+    for index, (frame, geometry) in enumerate(zip(frames, metadata)):
+        trail_bbox = effect_bbox(frame, set(TRAIL_COLORS))
+        sword_bbox = effect_bbox(frame, set(SWORD_COLORS))
+        composite_bbox = effect_bbox(frame, set(TRAIL_COLORS + SWORD_COLORS))
+        frame_report.append({
+            "frame": index + 1,
+            **geometry,
+            "slash_bbox_inclusive": trail_bbox,
+            "sword_bbox_inclusive": sword_bbox,
+            "composite_bbox_inclusive": composite_bbox,
+            "top_y": composite_bbox[1],
+            "bottom_y": composite_bbox[3],
+        })
+    return {
+        "bmp_size": list(SHEET_SIZE),
+        "bit_depth": bit_depth,
+        "used_palette_colors": len(used),
+        "frames": frame_report,
+    }
 
-        used_indices = set(image.getdata())
-        if not used_indices.issubset(set(range(len(INDEXED_PALETTE)))):
-            raise ValueError(f"Unexpected palette index: {path}: {used_indices}")
-        if image.size[0] != FRAME_SIZE * FRAME_COUNT:
-            raise ValueError(f"Unexpected frame count: {path}")
+
+def save_preview(direction: str, frames: list[Image.Image], metadata: list[dict[str, object]]) -> None:
+    scale = 4
+    header_height = 24
+    cell_width = FRAME_SIZE * scale
+    preview = Image.new("RGB", (cell_width * FRAME_COUNT, FRAME_SIZE * scale + header_height),
+                        (24, 24, 28))
+    draw = ImageDraw.Draw(preview)
+    for index, frame in enumerate(frames):
+        enlarged = frame.resize((cell_width, FRAME_SIZE * scale), Image.Resampling.NEAREST)
+        x = index * cell_width
+        preview.paste(enlarged, (x, header_height))
+        phase = " START" if index == 0 else " CENTER" if index == 2 else " END" if index == 4 else ""
+        draw.text((x + 4, 5), f"{index + 1}{phase}", fill=(255, 255, 255))
+        draw.line((x, 0, x, preview.height - 1), fill=(80, 80, 88))
+
+    for index, color in ((0, (0, 220, 255)), (4, (255, 64, 192))):
+        tip_x, tip_y = metadata[index]["sword_end"]
+        x = index * cell_width + tip_x * scale + scale // 2
+        y = header_height + tip_y * scale + scale // 2
+        draw.line((x - 6, y, x + 6, y), fill=color, width=2)
+        draw.line((x, y - 6, x, y + 6), fill=color, width=2)
+
+    PREVIEW_OUTPUT.mkdir(parents=True, exist_ok=True)
+    preview.save(PREVIEW_OUTPUT / f"swordsman_attack_{direction}_preview.png")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=Path("graphics/effects/attacks/swordsman"))
-    args = parser.parse_args()
-    args.output.mkdir(parents=True, exist_ok=True)
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    swords: dict[str, list[Image.Image]] = {}
+    geometry: dict[str, list[dict[str, object]]] = {}
+    for name, forward in DIRECTIONS.items():
+        rendered = [render_sword(forward, angle) for angle in SWING_ANGLES]
+        swords[name] = [item[0] for item in rendered]
+        geometry[name] = [item[1] for item in rendered]
 
-    all_data = dict(AUTHORED)
     for target, source in MIRRORS.items():
-        all_data[target] = mirror(all_data[source])
+        rendered = [mirror_frame(frame, data)
+                    for frame, data in zip(swords[source], geometry[source])]
+        swords[target] = [item[0] for item in rendered]
+        geometry[target] = [item[1] for item in rendered]
 
-    complete_report = {
-        "sheet_size": list(SHEET_SIZE),
+    report = {
+        "purpose": "combined preserved slash trail and detached sword overlay",
         "frame_size": [FRAME_SIZE, FRAME_SIZE],
         "frame_count": FRAME_COUNT,
-        "palette": ["#%02X%02X%02X" % value for value in PALETTE.values()],
+        "ticks_per_frame": 2,
+        "palette": ["#%02X%02X%02X" % color for color in COLORS],
+        "mirror_rule": "same frame index; horizontal pixels only; time is never reversed",
         "directions": {},
     }
-    previews = []
+    combined: dict[str, list[Image.Image]] = {}
     for direction in ORDER:
-        frames, report = render(direction, all_data[direction])
-        sheet = Image.new("RGB", SHEET_SIZE, GREEN)
+        trails = load_trail_frames(direction)
+        frames = [composite(trail, sword) for trail, sword in zip(trails, swords[direction])]
+        for frame_index, (trail, frame) in enumerate(zip(trails, frames)):
+            for trail_pixel, composite_pixel in zip(
+                    trail.get_flattened_data(), frame.get_flattened_data()):
+                if trail_pixel != TRANSPARENT and trail_pixel != composite_pixel:
+                    raise ValueError(
+                        f"preserved trail pixel changed: {direction}, frame {frame_index + 1}")
+        combined[direction] = frames
+        sheet = Image.new("RGB", SHEET_SIZE, TRANSPARENT)
         for index, frame in enumerate(frames):
             sheet.paste(frame, (index * FRAME_SIZE, 0))
-        stem = f"swordsman_slash_{direction}"
-        bmp_path = args.output / f"{stem}.bmp"
-        indexed_image(sheet).save(bmp_path)
-        validate_indexed_bmp(bmp_path)
-        sheet.save(args.output / f"{stem}.png")
-        (args.output / f"{stem}.json").write_text(
-            '{\n    "type": "sprite",\n    "height": 64\n}\n', encoding="utf-8"
-        )
-        preview = sheet.resize((SHEET_SIZE[0] * 8, SHEET_SIZE[1] * 8), Image.Resampling.NEAREST)
-        preview.save(args.output / f"{stem}_preview_8x.png")
-        previews.append(preview)
-        complete_report["directions"][direction] = report
+        path = OUTPUT / f"swordsman_slash_{direction}.bmp"
+        indexed(sheet).save(path)
+        report["directions"][direction] = validate_sheet(path, frames, geometry[direction])
+        save_preview(direction, frames, geometry[direction])
 
-    # Exact mirror validation for every pixel, including the green background.
     for target, source in MIRRORS.items():
-        target_frames, _ = render(target, all_data[target])
-        source_frames, _ = render(source, all_data[source])
-        for target_frame, source_frame in zip(target_frames, source_frames):
-            assert target_frame.tobytes() == source_frame.transpose(
-                Image.Transpose.FLIP_LEFT_RIGHT).tobytes()
+        for index in range(FRAME_COUNT):
+            expected_sword = swords[source][index].transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            if swords[target][index].tobytes() != expected_sword.tobytes():
+                raise ValueError(f"same-index sword mirror failed: {source} -> {target}, frame {index + 1}")
+            expected_combined = combined[source][index].transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            if combined[target][index].tobytes() != expected_combined.tobytes():
+                raise ValueError(f"same-index composite mirror failed: {source} -> {target}, frame {index + 1}")
+        tips = [frame["sword_end"] for frame in geometry[target]]
+        if not tips[0][1] < tips[4][1] or geometry[target][2]["swing_angle"] != 0:
+            raise ValueError(f"top-to-bottom time order failed: {target}: {tips}")
 
-    approved_down_hashes = [
-        "4acc9d041b7b49c81319c52ad43dcabbb44ab4ff46ef2567969750b5dd5c8cf2",
-        "3e0acd4451f1912578675fcded5c8479d427f10d763772e8cdd21dda54c15b47",
-        "9304e2c238d33a036c69e9ff183d971b9d1c72f299c2fecf075e0fe4c7f6a921",
-        "3dc3313325b0941950ece917ed43fb57048bf271ae3094dd3049c9c418c6dfee",
-        "278a044471f5b1efd6376ce6ef975f9054e9011eb867cd42e34a89b7ed00d5ef",
-    ]
-    actual_down_hashes = [
-        frame["sha256_rgb"] for frame in complete_report["directions"]["down"]
-    ]
-    assert actual_down_hashes == approved_down_hashes
-
-    montage = Image.new("RGB", (SHEET_SIZE[0] * 8, SHEET_SIZE[1] * 8 * len(previews)), GREEN)
-    for index, preview in enumerate(previews):
-        montage.paste(preview, (0, index * SHEET_SIZE[1] * 8))
-    montage.save(args.output / "swordsman_slash_8dir_preview_8x.png")
-    (args.output / "swordsman_slash_validation.json").write_text(
-        json.dumps(complete_report, indent=2), encoding="utf-8"
-    )
-    print(json.dumps(complete_report, indent=2))
+    REPORT.write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
+    print("generated 8 combined sword+slash sheets: 5x64x64, indexed 8bpp")
+    print("validated RIGHT/UP_RIGHT/DOWN_RIGHT as same-index mirrors with top-to-bottom tips")
 
 
 if __name__ == "__main__":

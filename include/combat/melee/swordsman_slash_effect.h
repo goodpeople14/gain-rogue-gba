@@ -13,7 +13,7 @@ public:
     static constexpr int ticks_per_frame = 2;
 
     void play(const AttackContext& context);
-    void update();
+    void update(const bn::fixed_point& position);
 
     [[nodiscard]] bool active() const;
 

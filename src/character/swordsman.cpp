@@ -24,7 +24,7 @@ bool Swordsman::try_attack()
 
 void Swordsman::update()
 {
-    _attack.update();
+    _attack.update(position());
 }
 
 SwordsmanAttack& Swordsman::melee_attack()
