@@ -46,8 +46,10 @@ private:
     enum class StatusIcon
     {
         NONE,
+        DISCOVERY_FLASH,
         TELEGRAPH,
-        RECOVERY_SWEAT
+        RECOVERY_HOURGLASS,
+        RETURN_QUESTION
     };
 
     void _update_roam();
@@ -55,12 +57,14 @@ private:
     void _update_telegraph();
     void _update_active();
     void _update_recovery();
-    void _update_return();
+    void _update_return(const WorldBox& player_pushbox);
     void _start_attack(Direction direction);
     void _finish_attack();
     void _die();
     void _set_telegraph_visible(bool visible);
-    void _set_recovery_sweat_visible(bool visible);
+    void _set_recovery_hourglass_visible(bool visible);
+    void _set_awareness_icon(StatusIcon icon);
+    void _update_timed_status_icon();
     void _move_direction(Direction direction, bn::fixed speed, const WorldBox* blocking_pushbox,
                          bool constrain_to_home);
     void _move_toward(const bn::fixed_point& target, bn::fixed speed, const WorldBox* blocking_pushbox);
@@ -73,7 +77,7 @@ private:
     int _state_timer = 0;
     int _roam_direction_index = 0;
     int _status_icon_frame = 0;
-    int _status_icon_frame_ticks = 0;
+    int _status_icon_timer = 0;
     StatusIcon _status_icon = StatusIcon::NONE;
     bool _active = true;
 };
