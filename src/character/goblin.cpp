@@ -25,6 +25,8 @@ namespace
     constexpr int discovery_flash_frames = 24;
     constexpr int discovery_bulb_white_frames = 10;
     constexpr int return_question_frames = 21;
+    constexpr int respawn_delay_ticks = 120;
+    constexpr int respawn_clearance = 2;
     constexpr int commit_margin = 2;
 
     [[nodiscard]] constexpr int discovery_bulb_frame(int remaining_frames)
@@ -174,10 +176,19 @@ namespace
         return { hitbox.center, hitbox.width - (commit_margin * 2), hitbox.height - (commit_margin * 2) };
     }
 
+    [[nodiscard]] constexpr WorldBox expanded_box(const WorldBox& box, int clearance)
+    {
+        return { box.center, box.width + (clearance * 2), box.height + (clearance * 2) };
+    }
+
     static_assert(commit_box({ { 0, 0 }, 12, 10 }).width == 8);
     static_assert(commit_box({ { 0, 0 }, 12, 10 }).height == 6);
     static_assert(! touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 10, 0 }, 10, 10 }));
     static_assert(touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 9, 0 }, 10, 10 }));
+    static_assert(expanded_box({ { 0, 0 }, 6, 6 }, respawn_clearance).width == 10);
+    static_assert(expanded_box({ { 0, 0 }, 6, 6 }, respawn_clearance).height == 10);
+    static_assert(touches_or_intersects(expanded_box({ { 0, 0 }, 6, 6 }, respawn_clearance), { { 9, 0 }, 8, 8 }));
+    static_assert(! touches_or_intersects(expanded_box({ { 0, 0 }, 6, 6 }, respawn_clearance), { { 10, 0 }, 8, 8 }));
     static_assert(discovery_bulb_frame(24) == 0);
     static_assert(discovery_bulb_frame(15) == 0);
     static_assert(discovery_bulb_frame(14) == 1);
@@ -214,6 +225,8 @@ void Goblin::enter()
     _status_icon_frame = 0;
     _status_icon_timer = 0;
     _status_icon = StatusIcon::NONE;
+    _respawn_timer = 0;
+    _respawning = false;
     _active = true;
     _set_telegraph_visible(false);
     apply_movement(_home_position, Direction::DOWN);
@@ -224,6 +237,7 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
 {
     if(! _active)
     {
+        _update_respawn(player_pushbox);
         return;
     }
 
@@ -462,13 +476,45 @@ void Goblin::_finish_attack()
 
 void Goblin::_die()
 {
+    if(! _active)
+    {
+        return;
+    }
+
     _attack_hit_registry.reset();
     _status_icon_timer = 0;
     _set_telegraph_visible(false);
     _state = State::DEAD;
     _state_timer = 0;
+    _respawn_timer = respawn_delay_ticks;
+    _respawning = true;
     _active = false;
     set_visible(false);
+}
+
+void Goblin::_update_respawn(const WorldBox& player_pushbox)
+{
+    if(! _respawning)
+    {
+        return;
+    }
+
+    if(_respawn_timer > 0)
+    {
+        --_respawn_timer;
+        return;
+    }
+
+    if(_respawn_position_is_safe(player_pushbox))
+    {
+        enter();
+    }
+}
+
+bool Goblin::_respawn_position_is_safe(const WorldBox& player_pushbox) const
+{
+    WorldBox spawn_pushbox = world_box(_home_position, collision_body().pushbox.box);
+    return ! touches_or_intersects(expanded_box(spawn_pushbox, respawn_clearance), player_pushbox);
 }
 
 void Goblin::_set_telegraph_visible(bool visible)

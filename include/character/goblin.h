@@ -61,6 +61,8 @@ private:
     void _start_attack(Direction direction);
     void _finish_attack();
     void _die();
+    void _update_respawn(const WorldBox& player_pushbox);
+    [[nodiscard]] bool _respawn_position_is_safe(const WorldBox& player_pushbox) const;
     void _set_telegraph_visible(bool visible);
     void _set_recovery_hourglass_visible(bool visible);
     void _set_awareness_icon(StatusIcon icon);
@@ -79,6 +81,8 @@ private:
     int _status_icon_frame = 0;
     int _status_icon_timer = 0;
     StatusIcon _status_icon = StatusIcon::NONE;
+    int _respawn_timer = 0;
+    bool _respawning = false;
     bool _active = true;
 };
 
