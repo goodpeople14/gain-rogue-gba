@@ -9,7 +9,8 @@ enum class CollisionDebugBoxType
 {
     HURTBOX,
     HITBOX,
-    PUSHBOX
+    PUSHBOX,
+    COMMIT_BOX
 };
 
 struct CollisionDebugBox

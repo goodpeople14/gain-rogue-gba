@@ -15,11 +15,11 @@ namespace
     constexpr int home_radius = 28;
     constexpr int discovery_distance = 42;
     constexpr int disengage_distance = 58;
-    constexpr int attack_distance = 19;
     constexpr int roam_direction_frames = 42;
     constexpr int telegraph_frames = 54;
     constexpr int active_frames = 8;
     constexpr int recovery_frames = 28;
+    constexpr int commit_margin = 2;
     constexpr bn::fixed roam_speed = bn::fixed(1) / 4;
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
     constexpr bn::fixed diagonal_ratio(0.70710678f);
@@ -55,7 +55,7 @@ namespace
         return value > 0 ? 1 : value < 0 ? -1 : 0;
     }
 
-    [[nodiscard]] Direction direction_from_components(int horizontal, int vertical, Direction fallback)
+    [[nodiscard]] constexpr Direction direction_from_components(int horizontal, int vertical, Direction fallback)
     {
         if(! horizontal && ! vertical)
         {
@@ -75,6 +75,39 @@ namespace
         return horizontal < 0 ? Direction::LEFT : Direction::RIGHT;
     }
 
+    [[nodiscard]] constexpr int absolute(int value)
+    {
+        return value < 0 ? -value : value;
+    }
+
+    [[nodiscard]] constexpr Direction nearest_direction(int horizontal, int vertical, Direction fallback)
+    {
+        if(! horizontal && ! vertical)
+        {
+            return fallback;
+        }
+
+        int horizontal_distance = absolute(horizontal);
+        int vertical_distance = absolute(vertical);
+        if(horizontal_distance * 12 < vertical_distance * 5)
+        {
+            return vertical < 0 ? Direction::UP : Direction::DOWN;
+        }
+
+        if(vertical_distance * 12 < horizontal_distance * 5)
+        {
+            return horizontal < 0 ? Direction::LEFT : Direction::RIGHT;
+        }
+
+        return direction_from_components(horizontal < 0 ? -1 : 1, vertical < 0 ? -1 : 1, fallback);
+    }
+
+    [[nodiscard]] Direction nearest_direction(const bn::fixed_point& origin, const bn::fixed_point& target,
+                                              Direction fallback)
+    {
+        return nearest_direction((target.x() - origin.x()).integer(), (target.y() - origin.y()).integer(), fallback);
+    }
+
     void direction_components(Direction direction, int& horizontal, int& vertical)
     {
         static constexpr bn::array<int, 8> horizontal_components = { 0, -1, -1, -1, 0, 1, 1, 1 };
@@ -87,6 +120,47 @@ namespace
     {
         return value < minimum ? minimum : value > maximum ? maximum : value;
     }
+
+    [[nodiscard]] constexpr bool attack_direction_tests()
+    {
+        return nearest_direction(20, 0, Direction::DOWN) == Direction::RIGHT &&
+               nearest_direction(-20, 1, Direction::DOWN) == Direction::LEFT &&
+               nearest_direction(1, -20, Direction::DOWN) == Direction::UP &&
+               nearest_direction(0, 20, Direction::UP) == Direction::DOWN &&
+               nearest_direction(20, 9, Direction::DOWN) == Direction::DOWN_RIGHT &&
+               nearest_direction(-20, -9, Direction::DOWN) == Direction::UP_LEFT &&
+               nearest_direction(20, 8, Direction::DOWN) == Direction::RIGHT &&
+               nearest_direction(8, 20, Direction::DOWN) == Direction::DOWN &&
+               attack_hitboxes[int(Direction::DOWN)].box.offset_y > 0 &&
+               attack_hitboxes[int(Direction::DOWN_LEFT)].box.offset_x < 0 &&
+               attack_hitboxes[int(Direction::DOWN_LEFT)].box.offset_y > 0 &&
+               attack_hitboxes[int(Direction::LEFT)].box.offset_x < 0 &&
+               attack_hitboxes[int(Direction::UP_LEFT)].box.offset_x < 0 &&
+               attack_hitboxes[int(Direction::UP_LEFT)].box.offset_y < 0 &&
+               attack_hitboxes[int(Direction::UP)].box.offset_y < 0 &&
+               attack_hitboxes[int(Direction::UP_RIGHT)].box.offset_x > 0 &&
+               attack_hitboxes[int(Direction::UP_RIGHT)].box.offset_y < 0 &&
+               attack_hitboxes[int(Direction::RIGHT)].box.offset_x > 0 &&
+               attack_hitboxes[int(Direction::DOWN_RIGHT)].box.offset_x > 0 &&
+               attack_hitboxes[int(Direction::DOWN_RIGHT)].box.offset_y > 0;
+    }
+
+    static_assert(attack_direction_tests());
+
+    [[nodiscard]] WorldBox attack_hitbox(const bn::fixed_point& position, Direction direction)
+    {
+        return world_box(position, attack_hitboxes[int(direction)].box);
+    }
+
+    [[nodiscard]] constexpr WorldBox commit_box(const WorldBox& hitbox)
+    {
+        return { hitbox.center, hitbox.width - (commit_margin * 2), hitbox.height - (commit_margin * 2) };
+    }
+
+    static_assert(commit_box({ { 0, 0 }, 12, 10 }).width == 8);
+    static_assert(commit_box({ { 0, 0 }, 12, 10 }).height == 6);
+    static_assert(! touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 10, 0 }, 10, 10 }));
+    static_assert(touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 9, 0 }, 10, 10 }));
 }
 
 Goblin::Goblin(const bn::fixed_point& home_position) :
@@ -108,7 +182,7 @@ void Goblin::enter()
     set_visible(true);
 }
 
-void Goblin::update(const WorldBox& player_pushbox)
+void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox)
 {
     if(! _active)
     {
@@ -128,7 +202,7 @@ void Goblin::update(const WorldBox& player_pushbox)
         }
         break;
     case State::CHASE:
-        _update_chase(player_pushbox);
+        _update_chase(player_hurtbox, player_pushbox);
         break;
     case State::TELEGRAPH:
         _update_telegraph();
@@ -172,7 +246,7 @@ void Goblin::resolve_player_hit(const bn::fixed_point& player_position, const Hu
         return;
     }
 
-    WorldBox hitbox = world_box(position(), attack_hitboxes[int(_attack_direction)].box);
+    WorldBox hitbox = attack_hitbox(position(), _attack_direction);
     WorldBox hurtbox = world_box(player_position, player_hurtbox.box);
     if(touches_or_intersects(hitbox, hurtbox) && _attack_hit_registry.add(player_target_id))
     {
@@ -211,7 +285,7 @@ WorldBoxList<3> Goblin::active_pushboxes() const
     return result;
 }
 
-void Goblin::append_collision_debug_boxes(CollisionDebugBoxList& boxes) const
+void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const
 {
     if(! _active)
     {
@@ -220,9 +294,18 @@ void Goblin::append_collision_debug_boxes(CollisionDebugBoxList& boxes) const
 
     boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX);
     boxes.add(world_box(position(), collision_body().pushbox.box), CollisionDebugBoxType::PUSHBOX);
-    if(attack_active())
+    if(_state == State::CHASE)
     {
-        boxes.add(world_box(position(), attack_hitboxes[int(_attack_direction)].box), CollisionDebugBoxType::HITBOX);
+        Direction attack_direction = nearest_direction(position(), player_hurtbox.center, direction());
+        boxes.add(commit_box(attack_hitbox(position(), attack_direction)), CollisionDebugBoxType::COMMIT_BOX);
+    }
+    else if(_state == State::TELEGRAPH)
+    {
+        boxes.add(commit_box(attack_hitbox(position(), _attack_direction)), CollisionDebugBoxType::COMMIT_BOX);
+    }
+    else if(attack_active())
+    {
+        boxes.add(attack_hitbox(position(), _attack_direction), CollisionDebugBoxType::HITBOX);
     }
 }
 
@@ -237,21 +320,22 @@ void Goblin::_update_roam()
     }
 }
 
-void Goblin::_update_chase(const WorldBox& player_pushbox)
+void Goblin::_update_chase(const WorldBox& player_hurtbox, const WorldBox& player_pushbox)
 {
-    if(! within_distance(position(), player_pushbox.center, disengage_distance))
+    if(! within_distance(position(), player_hurtbox.center, disengage_distance))
     {
         _state = State::RETURN;
         return;
     }
 
-    if(within_distance(position(), player_pushbox.center, attack_distance))
+    Direction attack_direction = nearest_direction(position(), player_hurtbox.center, direction());
+    if(touches_or_intersects(commit_box(attack_hitbox(position(), attack_direction)), player_hurtbox))
     {
-        _start_attack(player_pushbox.center);
+        _start_attack(attack_direction);
         return;
     }
 
-    _move_toward(player_pushbox.center, chase_speed, &player_pushbox);
+    _move_toward(player_hurtbox.center, chase_speed, &player_pushbox);
 }
 
 void Goblin::_update_telegraph()
@@ -293,10 +377,9 @@ void Goblin::_update_return()
     _move_toward(_home_position, chase_speed, nullptr);
 }
 
-void Goblin::_start_attack(const bn::fixed_point& player_position)
+void Goblin::_start_attack(Direction direction)
 {
-    _attack_direction = direction_from_components(sign(player_position.x() - position().x()),
-                                                   sign(player_position.y() - position().y()), direction());
+    _attack_direction = direction;
     apply_movement(position(), _attack_direction);
     _attack_hit_registry.reset();
     _state = State::TELEGRAPH;
