@@ -11,6 +11,8 @@ struct CollisionBody
     Pushbox pushbox;
 };
 
+constexpr int max_movement_obstacles = 4;
+
 template<int Capacity>
 struct WorldBoxList
 {

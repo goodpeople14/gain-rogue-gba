@@ -21,7 +21,7 @@ namespace
 
     [[nodiscard]] constexpr bool axis_move_allowed(
             const WorldBox& current_box, const WorldBox& candidate_box,
-            const WorldBoxList<3>& obstacles, bool horizontal_axis)
+            const WorldBoxList<max_movement_obstacles>& obstacles, bool horizontal_axis)
     {
         for(int index = 0; index < obstacles.count; ++index)
         {
@@ -51,7 +51,7 @@ namespace
 
     [[nodiscard]] constexpr bool movement_collision_tests()
     {
-        WorldBoxList<3> obstacles;
+        WorldBoxList<max_movement_obstacles> obstacles;
         obstacles.boxes[0] = { { 0, 0 }, 10, 10 };
         obstacles.count = 1;
 
@@ -71,7 +71,7 @@ namespace
 }
 
 bn::fixed_point resolve_movement(const bn::fixed_point& current_position, const bn::fixed_point& delta,
-                                 const Pushbox& moving_pushbox, const WorldBoxList<3>& obstacles,
+                                 const Pushbox& moving_pushbox, const WorldBoxList<max_movement_obstacles>& obstacles,
                                  const MovementBounds& bounds)
 {
     bn::fixed_point result = current_position;

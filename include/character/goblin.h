@@ -1,8 +1,10 @@
 #ifndef CHARACTER_GOBLIN_H
 #define CHARACTER_GOBLIN_H
 
-#include "bn_optional.h"
+#include "bn_array.h"
+#include "bn_sprite_palette_ptr.h"
 #include "bn_sprite_ptr.h"
+#include "bn_sprite_tiles_ptr.h"
 
 #include "character/character.h"
 #include "combat/attack_hit_registry.h"
@@ -27,10 +29,11 @@ public:
 
     static constexpr int max_hp = 1;
 
-    explicit Goblin(const bn::fixed_point& home_position);
+    Goblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
-    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox);
+    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+                const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
     void resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
                             HitEffectManager& hit_effects);
@@ -39,7 +42,7 @@ public:
     [[nodiscard]] bool attack_active() const;
     [[nodiscard]] State state() const;
     [[nodiscard]] WorldBox world_hurtbox() const;
-    [[nodiscard]] WorldBoxList<3> active_pushboxes() const;
+    [[nodiscard]] WorldBox world_pushbox() const;
     void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const;
 
 private:
@@ -52,28 +55,43 @@ private:
         RETURN_QUESTION
     };
 
-    void _update_roam();
-    void _update_chase(const WorldBox& player_hurtbox, const WorldBox& player_pushbox);
+    void _update_roam(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    void _update_chase(const WorldBox& player_hurtbox,
+                       const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _update_telegraph();
     void _update_active();
     void _update_recovery();
-    void _update_return(const WorldBox& player_pushbox);
+    void _update_return(const WorldBox& player_pushbox,
+                        const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _start_attack(Direction direction);
     void _finish_attack();
     void _die();
-    void _update_respawn(const WorldBox& player_pushbox);
-    [[nodiscard]] bool _respawn_position_is_safe(const WorldBox& player_pushbox) const;
+    void _update_respawn(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    [[nodiscard]] bool _respawn_position_is_safe(
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes) const;
     void _set_telegraph_visible(bool visible);
     void _set_recovery_hourglass_visible(bool visible);
     void _set_awareness_icon(StatusIcon icon);
+    void _show_status_icon(const bn::sprite_item& item, const bn::sprite_tiles_ptr& tiles,
+                           const bn::sprite_palette_ptr& palette, StatusIcon icon, int frame,
+                           const bn::fixed_point& position);
     void _update_timed_status_icon();
-    void _move_direction(Direction direction, bn::fixed speed, const WorldBox* blocking_pushbox,
+    void _move_direction(Direction direction, bn::fixed speed,
+                         const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                          bool constrain_to_home);
-    void _move_toward(const bn::fixed_point& target, bn::fixed speed, const WorldBox* blocking_pushbox);
+    void _move_toward(const bn::fixed_point& target, bn::fixed speed,
+                      const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
 
     bn::fixed_point _home_position;
-    bn::optional<bn::sprite_ptr> _status_icon_sprite;
+    bn::array<bn::sprite_tiles_ptr, 3> _awareness_icon_tiles;
+    bn::sprite_palette_ptr _awareness_icon_palette;
+    bn::sprite_tiles_ptr _telegraph_tiles;
+    bn::sprite_palette_ptr _telegraph_palette;
+    bn::array<bn::sprite_tiles_ptr, 2> _recovery_hourglass_tiles;
+    bn::sprite_palette_ptr _recovery_hourglass_palette;
+    bn::sprite_ptr _status_icon_sprite;
     AttackHitRegistry _attack_hit_registry;
+    int _target_id;
     Direction _attack_direction = Direction::DOWN;
     State _state = State::ROAM;
     int _state_timer = 0;
