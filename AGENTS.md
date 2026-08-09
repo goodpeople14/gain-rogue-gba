@@ -29,7 +29,7 @@
 - `include/game/direction.h`의 방향 순서를 보존한다. 스프라이트 프레임 인덱스와 방향별 데이터가 이 순서에 의존한다.
 - 게임 객체 모음에는 고정 크기 Butano 컨테이너와 미리 정한 최대 개수를 우선 사용한다. 필요성이 확인되지 않은 동적 할당은 도입하지 않는다.
 
-자산 규격은 `docs/graphics-rules.md`, 전투 구조는 `docs/combat-rules.md`를 따른다.
+자산 규격은 `docs/graphics-rules.md`, Sprite palette 정책은 `docs/harness/gba-sprite-palette.md`, 전투 구조는 `docs/combat-rules.md`를 따른다.
 
 ## 자산과 생성 파일
 
