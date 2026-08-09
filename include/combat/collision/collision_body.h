@@ -11,7 +11,8 @@ struct CollisionBody
     Pushbox pushbox;
 };
 
-constexpr int max_movement_obstacles = 4;
+// One moving enemy can be blocked by the player plus the four other enemies.
+constexpr int max_movement_obstacles = 5;
 
 template<int Capacity>
 struct WorldBoxList

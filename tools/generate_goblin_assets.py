@@ -36,6 +36,8 @@ STATUS_PALETTE = [
     (192, 125, 48)   # muted-gold sand
 ]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
+CROSSBOW_GOBLIN_PATH = Path("graphics/characters/enemies/goblin/crossbow_goblin.bmp")
+CROSSBOW_ARROW_PATH = Path("graphics/effects/common/crossbow_arrow.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
 HOURGLASS_PATH = Path("graphics/effects/common/goblin_recovery_hourglass.bmp")
 AWARENESS_PATH = Path("graphics/effects/common/goblin_awareness_icons.bmp")
@@ -109,6 +111,45 @@ def generate_goblin() -> None:
     sheet.save(GOBLIN_PATH)
 
 
+def crossbow_goblin_frame(direction: tuple[int, int]) -> Image.Image:
+    """Keep the existing goblin body and replace only its club with a compact crossbow."""
+    image = goblin_frame(direction, False)
+    draw = ImageDraw.Draw(image)
+    dx, dy = direction
+    hand_x = 5 if dx < 0 else 10
+    hand_y = 11
+    stock_x = hand_x + dx * 3
+    stock_y = hand_y + dy * 3
+    arm_x = -dy
+    arm_y = dx
+
+    draw.line(((hand_x, hand_y), (stock_x, stock_y)), fill=1)
+    draw.line(((hand_x, hand_y), (stock_x, stock_y)), fill=6)
+    draw.line(((stock_x - arm_x * 2, stock_y - arm_y * 2),
+               (stock_x + arm_x * 2, stock_y + arm_y * 2)), fill=1)
+    draw.line(((stock_x - arm_x, stock_y - arm_y),
+               (stock_x + arm_x, stock_y + arm_y)), fill=6)
+    return image
+
+
+def generate_crossbow_goblin() -> None:
+    sheet = indexed((16, 16 * len(DIRECTIONS)))
+    for index, direction in enumerate(DIRECTIONS):
+        sheet.paste(crossbow_goblin_frame(direction), (0, index * 16))
+    sheet.save(CROSSBOW_GOBLIN_PATH)
+
+
+def generate_crossbow_arrow() -> None:
+    image = indexed((8, 8))
+    draw = ImageDraw.Draw(image)
+    draw.line(((1, 6), (6, 1)), fill=1)
+    draw.line(((1, 5), (5, 1)), fill=6)
+    draw.point((6, 1), fill=4)
+    draw.point((1, 6), fill=6)
+    CROSSBOW_ARROW_PATH.parent.mkdir(parents=True, exist_ok=True)
+    image.save(CROSSBOW_ARROW_PATH)
+
+
 def opaque_bounds(image: Image.Image) -> tuple[int, int, int, int]:
     points = [(x, y) for y in range(image.height) for x in range(image.width) if image.getpixel((x, y))]
     assert points
@@ -134,6 +175,14 @@ def validate_goblin_frames() -> None:
         assert any((x + 1, y) in scarf_pixels for x, y in scarf_pixels)
         print(f"{direction_name}: body+ears={body_width}x{body_height} {body_bounds}, "
               f"with_club={total_width}x{total_height} {total_bounds}")
+
+
+def validate_crossbow_goblin_frames() -> None:
+    for direction in DIRECTIONS:
+        bounds = opaque_bounds(crossbow_goblin_frame(direction))
+        assert bounds[3] == 15
+        assert bounds[2] - bounds[0] + 1 <= 13
+        assert bounds[3] - bounds[1] + 1 <= 13
 
 
 def generate_telegraph() -> None:
@@ -263,6 +312,9 @@ def validate(path: Path, size: tuple[int, int], palette: list[tuple[int, int, in
 def main() -> None:
     generate_goblin()
     validate_goblin_frames()
+    generate_crossbow_goblin()
+    validate_crossbow_goblin_frames()
+    generate_crossbow_arrow()
     generate_telegraph()
     generate_recovery_hourglass()
     generate_awareness_icons()
@@ -271,12 +323,14 @@ def main() -> None:
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 4, False)
     validate(GOBLIN_PATH, (16, 128))
+    validate(CROSSBOW_GOBLIN_PATH, (16, 128))
+    validate(CROSSBOW_ARROW_PATH, (8, 8))
     validate(TELEGRAPH_PATH, (8, 8))
     validate(HOURGLASS_PATH, (8, 16), STATUS_PALETTE)
     validate(AWARENESS_PATH, (8, 24), STATUS_PALETTE)
     for path in DEBUG_CORNER_PATHS.values():
         validate(path, (8, 8), DEBUG_PALETTE)
-    print("generated indexed 8bpp goblin, enemy telegraph, recovery hourglass, awareness icons, and collision debug corners")
+    print("generated indexed 8bpp goblin, crossbow goblin, arrow, status icons, and collision debug corners")
 
 
 if __name__ == "__main__":
