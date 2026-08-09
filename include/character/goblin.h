@@ -55,6 +55,13 @@ private:
         RETURN_QUESTION
     };
 
+    enum class MovementResult
+    {
+        BLOCKED,
+        PARTIAL,
+        FULL
+    };
+
     void _update_roam(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _update_chase(const WorldBox& player_hurtbox,
                        const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
@@ -76,6 +83,21 @@ private:
                            const bn::sprite_palette_ptr& palette, StatusIcon icon, int frame,
                            const bn::fixed_point& position);
     void _update_timed_status_icon();
+    void _reset_local_avoidance();
+    void _start_local_detour(
+            Direction desired_direction, bn::fixed speed,
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    void _move_toward_with_local_avoidance(
+            const bn::fixed_point& target, bn::fixed speed,
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    [[nodiscard]] MovementResult _resolve_move_direction(
+            Direction direction, bn::fixed speed,
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+            bool constrain_to_home, bn::fixed_point& resolved_position) const;
+    [[nodiscard]] MovementResult _try_move_direction(
+            Direction direction, bn::fixed speed,
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+            bool constrain_to_home);
     void _move_direction(Direction direction, bn::fixed speed,
                          const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                          bool constrain_to_home);
@@ -93,11 +115,14 @@ private:
     AttackHitRegistry _attack_hit_registry;
     int _target_id;
     Direction _attack_direction = Direction::DOWN;
+    Direction _detour_direction = Direction::DOWN;
     State _state = State::ROAM;
     int _state_timer = 0;
     int _roam_direction_index = 0;
     int _status_icon_frame = 0;
     int _status_icon_timer = 0;
+    int _stuck_frames = 0;
+    int _detour_frames = 0;
     StatusIcon _status_icon = StatusIcon::NONE;
     int _respawn_timer = 0;
     bool _respawning = false;
