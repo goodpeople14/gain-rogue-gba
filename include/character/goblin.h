@@ -76,11 +76,16 @@ private:
                            const bn::sprite_palette_ptr& palette, StatusIcon icon, int frame,
                            const bn::fixed_point& position);
     void _update_timed_status_icon();
+    [[nodiscard]] bool _try_move_direction(
+            Direction direction, bn::fixed speed,
+            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+            bool constrain_to_home);
     void _move_direction(Direction direction, bn::fixed speed,
                          const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                          bool constrain_to_home);
     void _move_toward(const bn::fixed_point& target, bn::fixed speed,
-                      const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+                      const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+                      bool local_avoidance);
 
     bn::fixed_point _home_position;
     bn::array<bn::sprite_tiles_ptr, 3> _awareness_icon_tiles;
@@ -93,11 +98,13 @@ private:
     AttackHitRegistry _attack_hit_registry;
     int _target_id;
     Direction _attack_direction = Direction::DOWN;
+    Direction _avoidance_direction = Direction::DOWN;
     State _state = State::ROAM;
     int _state_timer = 0;
     int _roam_direction_index = 0;
     int _status_icon_frame = 0;
     int _status_icon_timer = 0;
+    int _avoidance_frames = 0;
     StatusIcon _status_icon = StatusIcon::NONE;
     int _respawn_timer = 0;
     bool _respawning = false;

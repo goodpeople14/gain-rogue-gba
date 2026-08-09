@@ -8,6 +8,7 @@
 #include "bn_sprite_items_goblin_recovery_hourglass.h"
 
 #include "combat/collision/collision_math.h"
+#include "combat/collision/movement_collision.h"
 #include "combat/hit_effect_manager.h"
 #include "combat/melee/swordsman_attack.h"
 
@@ -27,6 +28,8 @@ namespace
     constexpr int respawn_delay_ticks = 120;
     constexpr int respawn_clearance = 2;
     constexpr int commit_margin = 2;
+    constexpr int goblin_size = 16;
+    constexpr int avoidance_hold_frames = 12;
 
     [[nodiscard]] constexpr int discovery_bulb_frame(int remaining_frames)
     {
@@ -41,6 +44,7 @@ namespace
     constexpr bn::fixed roam_speed = bn::fixed(1) / 4;
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
     constexpr bn::fixed diagonal_ratio(0.70710678f);
+    constexpr MovementBounds goblin_movement_bounds = Battlefield::movement_bounds(goblin_size, goblin_size);
     constexpr CollisionBody goblin_collision_body = {
         { { 0, 1, 8, 10 } },
         { { 0, 4, 6, 6 } }
@@ -134,6 +138,29 @@ namespace
         vertical = vertical_components[int(direction)];
     }
 
+    [[nodiscard]] constexpr Direction offset_direction(Direction direction, int offset)
+    {
+        int index = (int(direction) + offset) % 8;
+        if(index < 0)
+        {
+            index += 8;
+        }
+        return Direction(index);
+    }
+
+    [[nodiscard]] constexpr bn::array<Direction, 5> movement_candidates(
+            Direction desired_direction, bool clockwise_first)
+    {
+        int preferred_offset = clockwise_first ? 1 : -1;
+        return {
+            desired_direction,
+            offset_direction(desired_direction, preferred_offset),
+            offset_direction(desired_direction, -preferred_offset),
+            offset_direction(desired_direction, preferred_offset * 2),
+            offset_direction(desired_direction, -preferred_offset * 2)
+        };
+    }
+
     [[nodiscard]] bn::fixed clamp(bn::fixed value, bn::fixed minimum, bn::fixed maximum)
     {
         return value < minimum ? minimum : value > maximum ? maximum : value;
@@ -164,6 +191,12 @@ namespace
     }
 
     static_assert(attack_direction_tests());
+    static_assert(movement_candidates(Direction::RIGHT, false)[0] == Direction::RIGHT);
+    static_assert(movement_candidates(Direction::RIGHT, false)[1] == Direction::UP_RIGHT);
+    static_assert(movement_candidates(Direction::RIGHT, false)[2] == Direction::DOWN_RIGHT);
+    static_assert(movement_candidates(Direction::UP_RIGHT, false)[1] == Direction::UP);
+    static_assert(movement_candidates(Direction::UP_RIGHT, false)[2] == Direction::RIGHT);
+    static_assert(movement_candidates(Direction::RIGHT, true)[1] == Direction::DOWN_RIGHT);
 
     [[nodiscard]] WorldBox attack_hitbox(const bn::fixed_point& position, Direction direction)
     {
@@ -237,9 +270,11 @@ void Goblin::enter()
     _state_timer = roam_direction_frames;
     _roam_direction_index = 0;
     _attack_direction = Direction::DOWN;
+    _avoidance_direction = Direction::DOWN;
     _attack_hit_registry.reset();
     _status_icon_frame = 0;
     _status_icon_timer = 0;
+    _avoidance_frames = 0;
     _status_icon = StatusIcon::NONE;
     _respawn_timer = 0;
     _respawning = false;
@@ -397,6 +432,7 @@ void Goblin::_update_chase(const WorldBox& player_hurtbox,
 {
     if(! within_distance(position(), player_hurtbox.center, disengage_distance))
     {
+        _avoidance_frames = 0;
         _state = State::RETURN;
         _status_icon_timer = return_question_frames;
         _set_awareness_icon(StatusIcon::RETURN_QUESTION);
@@ -410,7 +446,7 @@ void Goblin::_update_chase(const WorldBox& player_hurtbox,
         return;
     }
 
-    _move_toward(player_hurtbox.center, chase_speed, blocking_pushboxes);
+    _move_toward(player_hurtbox.center, chase_speed, blocking_pushboxes, true);
 }
 
 void Goblin::_update_telegraph()
@@ -463,11 +499,12 @@ void Goblin::_update_return(const WorldBox& player_pushbox,
         return;
     }
 
-    _move_toward(_home_position, chase_speed, blocking_pushboxes);
+    _move_toward(_home_position, chase_speed, blocking_pushboxes, false);
 }
 
 void Goblin::_start_attack(Direction direction)
 {
+    _avoidance_frames = 0;
     _attack_direction = direction;
     apply_movement(position(), _attack_direction);
     _attack_hit_registry.reset();
@@ -500,6 +537,7 @@ void Goblin::_die()
     _state = State::DEAD;
     _state_timer = 0;
     _respawn_timer = respawn_delay_ticks;
+    _avoidance_frames = 0;
     _respawning = true;
     _active = false;
     set_visible(false);
@@ -635,9 +673,9 @@ void Goblin::_update_timed_status_icon()
     _set_awareness_icon(_status_icon);
 }
 
-void Goblin::_move_direction(Direction direction, bn::fixed speed,
-                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
-                             bool constrain_to_home)
+bool Goblin::_try_move_direction(Direction direction, bn::fixed speed,
+                                const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+                                bool constrain_to_home)
 {
     int horizontal;
     int vertical;
@@ -655,25 +693,67 @@ void Goblin::_move_direction(Direction direction, bn::fixed speed,
         next.set_y(clamp(next.y(), _home_position.y() - home_radius, _home_position.y() + home_radius));
     }
 
-    WorldBox current = world_pushbox();
-    WorldBox candidate = world_box(next, collision_body().pushbox.box);
-    for(int index = 0; index < blocking_pushboxes.count; ++index)
+    bn::fixed_point resolved_position = resolve_movement(
+            position(), next - position(), collision_body().pushbox,
+            blocking_pushboxes, goblin_movement_bounds);
+    if(resolved_position == position())
     {
-        const WorldBox& blocking_pushbox = blocking_pushboxes.boxes[index];
-        if(overlaps_strictly(candidate, blocking_pushbox) && ! overlaps_strictly(current, blocking_pushbox))
+        return false;
+    }
+
+    apply_movement(resolved_position, direction);
+    return true;
+}
+
+void Goblin::_move_direction(Direction direction, bn::fixed speed,
+                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+                             bool constrain_to_home)
+{
+    if(! _try_move_direction(direction, speed, blocking_pushboxes, constrain_to_home))
+    {
+        apply_movement(position(), direction);
+    }
+}
+
+void Goblin::_move_toward(const bn::fixed_point& target, bn::fixed speed,
+                          const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
+                          bool local_avoidance)
+{
+    Direction movement_direction = direction_from_components(
+            sign(target.x() - position().x()), sign(target.y() - position().y()), direction());
+
+    if(! local_avoidance)
+    {
+        _avoidance_frames = 0;
+        _move_direction(movement_direction, speed, blocking_pushboxes, false);
+        return;
+    }
+
+    if(_avoidance_frames > 0)
+    {
+        --_avoidance_frames;
+        if(_try_move_direction(_avoidance_direction, speed, blocking_pushboxes, false))
         {
-            apply_movement(position(), direction);
+            return;
+        }
+        _avoidance_frames = 0;
+    }
+
+    bn::array<Direction, 5> candidates = movement_candidates(movement_direction, _target_id % 2 == 0);
+    for(int index = 0; index < candidates.size(); ++index)
+    {
+        Direction candidate = candidates[index];
+        if(_try_move_direction(candidate, speed, blocking_pushboxes, false))
+        {
+            if(index > 0)
+            {
+                _avoidance_direction = candidate;
+                _avoidance_frames = avoidance_hold_frames;
+            }
             return;
         }
     }
 
-    apply_movement(next, direction);
-}
-
-void Goblin::_move_toward(const bn::fixed_point& target, bn::fixed speed,
-                          const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
-{
-    Direction movement_direction = direction_from_components(
-            sign(target.x() - position().x()), sign(target.y() - position().y()), direction());
-    _move_direction(movement_direction, speed, blocking_pushboxes, false);
+    _avoidance_frames = 0;
+    apply_movement(position(), movement_direction);
 }
