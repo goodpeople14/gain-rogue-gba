@@ -1,6 +1,6 @@
 # 그래픽 자산 규칙
 
-Sprite 또는 Effect의 palette를 생성·변경할 때는 [GBA Sprite Palette Harness](harness/gba-sprite-palette.md)를 함께 따른다.
+Sprite 또는 Effect의 palette를 생성·변경할 때는 [GBA Sprite Palette Harness](gba-sprite-palette.md)를 함께 따른다.
 
 ## 빌드 연동
 
