@@ -13,7 +13,6 @@
 
 namespace
 {
-    constexpr int goblin_target_id = 10;
     constexpr int player_target_id = 0;
     constexpr int home_radius = 28;
     constexpr int discovery_distance = 42;
@@ -209,10 +208,27 @@ namespace
     }
 }
 
-Goblin::Goblin(const bn::fixed_point& home_position) :
+Goblin::Goblin(const bn::fixed_point& home_position, int target_id) :
     Character(bn::sprite_items::goblin, home_position, Direction::DOWN, chase_speed, goblin_collision_body),
-    _home_position(home_position)
+    _home_position(home_position),
+    _awareness_icon_tiles{{
+        bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(0),
+        bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(1),
+        bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(2)
+    }},
+    _awareness_icon_palette(bn::sprite_items::goblin_awareness_icons.palette_item().create_palette()),
+    _telegraph_tiles(bn::sprite_items::enemy_telegraph.tiles_item().create_tiles()),
+    _telegraph_palette(bn::sprite_items::enemy_telegraph.palette_item().create_palette()),
+    _recovery_hourglass_tiles{{
+        bn::sprite_items::goblin_recovery_hourglass.tiles_item().create_tiles(0),
+        bn::sprite_items::goblin_recovery_hourglass.tiles_item().create_tiles(1)
+    }},
+    _recovery_hourglass_palette(bn::sprite_items::goblin_recovery_hourglass.palette_item().create_palette()),
+    _status_icon_sprite(bn::sprite_items::goblin_awareness_icons.create_sprite(home_position, 0)),
+    _target_id(target_id)
 {
+    _status_icon_sprite.set_z_order(-2);
+    _status_icon_sprite.set_visible(false);
 }
 
 void Goblin::enter()
@@ -233,11 +249,12 @@ void Goblin::enter()
     set_visible(true);
 }
 
-void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox)
+void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+                    const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! _active)
     {
-        _update_respawn(player_pushbox);
+        _update_respawn(blocking_pushboxes);
         return;
     }
 
@@ -254,11 +271,11 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         }
         else
         {
-            _update_roam();
+            _update_roam(blocking_pushboxes);
         }
         break;
     case State::CHASE:
-        _update_chase(player_hurtbox, player_pushbox);
+        _update_chase(player_hurtbox, blocking_pushboxes);
         break;
     case State::TELEGRAPH:
         _update_telegraph();
@@ -270,7 +287,7 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         _update_recovery();
         break;
     case State::RETURN:
-        _update_return(player_pushbox);
+        _update_return(player_pushbox, blocking_pushboxes);
         break;
     case State::DEAD:
         break;
@@ -278,9 +295,9 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         break;
     }
 
-    if(_status_icon_sprite)
+    if(_status_icon != StatusIcon::NONE)
     {
-        _status_icon_sprite->set_position(status_icon_position(position()));
+        _status_icon_sprite.set_position(status_icon_position(position()));
     }
 }
 
@@ -291,7 +308,7 @@ void Goblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hi
         return;
     }
 
-    int damage = attack.try_hit(goblin_target_id, position(), collision_body().hurtbox);
+    int damage = attack.try_hit(_target_id, position(), collision_body().hurtbox);
     if(damage > 0)
     {
         hit_effects.spawn(world_hurtbox().center);
@@ -335,15 +352,9 @@ WorldBox Goblin::world_hurtbox() const
     return world_box(position(), collision_body().hurtbox.box);
 }
 
-WorldBoxList<3> Goblin::active_pushboxes() const
+WorldBox Goblin::world_pushbox() const
 {
-    WorldBoxList<3> result;
-    if(_active)
-    {
-        result.boxes[0] = world_box(position(), collision_body().pushbox.box);
-        result.count = 1;
-    }
-    return result;
+    return world_box(position(), collision_body().pushbox.box);
 }
 
 void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const
@@ -354,7 +365,7 @@ void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, Collis
     }
 
     boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX);
-    boxes.add(world_box(position(), collision_body().pushbox.box), CollisionDebugBoxType::PUSHBOX);
+    boxes.add(world_pushbox(), CollisionDebugBoxType::PUSHBOX);
     if(_state == State::CHASE)
     {
         Direction attack_direction = nearest_direction(position(), player_hurtbox.center, direction());
@@ -370,9 +381,9 @@ void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, Collis
     }
 }
 
-void Goblin::_update_roam()
+void Goblin::_update_roam(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
-    _move_direction(roam_directions[_roam_direction_index], roam_speed, nullptr, true);
+    _move_direction(roam_directions[_roam_direction_index], roam_speed, blocking_pushboxes, true);
     --_state_timer;
     if(_state_timer == 0)
     {
@@ -381,7 +392,8 @@ void Goblin::_update_roam()
     }
 }
 
-void Goblin::_update_chase(const WorldBox& player_hurtbox, const WorldBox& player_pushbox)
+void Goblin::_update_chase(const WorldBox& player_hurtbox,
+                           const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! within_distance(position(), player_hurtbox.center, disengage_distance))
     {
@@ -398,7 +410,7 @@ void Goblin::_update_chase(const WorldBox& player_hurtbox, const WorldBox& playe
         return;
     }
 
-    _move_toward(player_hurtbox.center, chase_speed, &player_pushbox);
+    _move_toward(player_hurtbox.center, chase_speed, blocking_pushboxes);
 }
 
 void Goblin::_update_telegraph()
@@ -431,7 +443,8 @@ void Goblin::_update_recovery()
     }
 }
 
-void Goblin::_update_return(const WorldBox& player_pushbox)
+void Goblin::_update_return(const WorldBox& player_pushbox,
+                            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(within_distance(position(), player_pushbox.center, discovery_distance))
     {
@@ -450,7 +463,7 @@ void Goblin::_update_return(const WorldBox& player_pushbox)
         return;
     }
 
-    _move_toward(_home_position, chase_speed, nullptr);
+    _move_toward(_home_position, chase_speed, blocking_pushboxes);
 }
 
 void Goblin::_start_attack(Direction direction)
@@ -492,7 +505,7 @@ void Goblin::_die()
     set_visible(false);
 }
 
-void Goblin::_update_respawn(const WorldBox& player_pushbox)
+void Goblin::_update_respawn(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! _respawning)
     {
@@ -505,42 +518,47 @@ void Goblin::_update_respawn(const WorldBox& player_pushbox)
         return;
     }
 
-    if(_respawn_position_is_safe(player_pushbox))
+    if(_respawn_position_is_safe(blocking_pushboxes))
     {
         enter();
     }
 }
 
-bool Goblin::_respawn_position_is_safe(const WorldBox& player_pushbox) const
+bool Goblin::_respawn_position_is_safe(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes) const
 {
     WorldBox spawn_pushbox = world_box(_home_position, collision_body().pushbox.box);
-    return ! touches_or_intersects(expanded_box(spawn_pushbox, respawn_clearance), player_pushbox);
+    WorldBox safe_spawn_pushbox = expanded_box(spawn_pushbox, respawn_clearance);
+
+    for(int index = 0; index < blocking_pushboxes.count; ++index)
+    {
+        if(touches_or_intersects(safe_spawn_pushbox, blocking_pushboxes.boxes[index]))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Goblin::_set_telegraph_visible(bool visible)
 {
     if(! visible)
     {
-        _status_icon_sprite.reset();
+        _status_icon_sprite.set_visible(false);
         _status_icon = StatusIcon::NONE;
         return;
     }
 
     bn::fixed_point telegraph_position = status_icon_position(position());
-    if(! _status_icon_sprite)
+    if(_status_icon != StatusIcon::TELEGRAPH)
     {
-        _status_icon_sprite = bn::sprite_items::enemy_telegraph.create_sprite(telegraph_position);
-        _status_icon_sprite->set_z_order(-2);
-        _status_icon = StatusIcon::TELEGRAPH;
+        _show_status_icon(bn::sprite_items::enemy_telegraph, _telegraph_tiles, _telegraph_palette,
+                          StatusIcon::TELEGRAPH, 0, telegraph_position);
     }
     else
     {
-        if(_status_icon != StatusIcon::TELEGRAPH)
-        {
-            _status_icon_sprite->set_item(bn::sprite_items::enemy_telegraph);
-            _status_icon = StatusIcon::TELEGRAPH;
-        }
-        _status_icon_sprite->set_position(telegraph_position);
+        _status_icon_sprite.set_position(telegraph_position);
+        _status_icon_sprite.set_visible(true);
     }
 }
 
@@ -548,30 +566,22 @@ void Goblin::_set_recovery_hourglass_visible(bool visible)
 {
     if(! visible)
     {
-        _status_icon_sprite.reset();
+        _status_icon_sprite.set_visible(false);
         _status_icon = StatusIcon::NONE;
         return;
     }
 
     int frame = recovery_hourglass_frame(_state_timer);
     bn::fixed_point hourglass_position = status_icon_position(position());
-    if(! _status_icon_sprite)
+    if(_status_icon != StatusIcon::RECOVERY_HOURGLASS || _status_icon_frame != frame)
     {
-        _status_icon_sprite = bn::sprite_items::goblin_recovery_hourglass.create_sprite(hourglass_position, frame);
-        _status_icon_sprite->set_z_order(-2);
-        _status_icon = StatusIcon::RECOVERY_HOURGLASS;
-        _status_icon_frame = frame;
+        _show_status_icon(bn::sprite_items::goblin_recovery_hourglass, _recovery_hourglass_tiles[frame],
+                          _recovery_hourglass_palette, StatusIcon::RECOVERY_HOURGLASS, frame, hourglass_position);
     }
     else
     {
-        if(_status_icon != StatusIcon::RECOVERY_HOURGLASS ||
-           _status_icon_frame != frame)
-        {
-            _status_icon_sprite->set_item(bn::sprite_items::goblin_recovery_hourglass, frame);
-            _status_icon = StatusIcon::RECOVERY_HOURGLASS;
-            _status_icon_frame = frame;
-        }
-        _status_icon_sprite->set_position(hourglass_position);
+        _status_icon_sprite.set_position(hourglass_position);
+        _status_icon_sprite.set_visible(true);
     }
 }
 
@@ -585,23 +595,27 @@ void Goblin::_set_awareness_icon(StatusIcon icon)
         frame = discovery_bulb_frame(_status_icon_timer);
     }
     bn::fixed_point icon_position = status_icon_position(position());
-    if(! _status_icon_sprite)
+    if(_status_icon != icon || _status_icon_frame != frame)
     {
-        _status_icon_sprite = bn::sprite_items::goblin_awareness_icons.create_sprite(icon_position, frame);
-        _status_icon_sprite->set_z_order(-2);
-        _status_icon = icon;
-        _status_icon_frame = frame;
+        _show_status_icon(bn::sprite_items::goblin_awareness_icons, _awareness_icon_tiles[frame],
+                          _awareness_icon_palette, icon, frame, icon_position);
     }
     else
     {
-        if(_status_icon != icon || _status_icon_frame != frame)
-        {
-            _status_icon_sprite->set_item(bn::sprite_items::goblin_awareness_icons, frame);
-            _status_icon = icon;
-            _status_icon_frame = frame;
-        }
-        _status_icon_sprite->set_position(icon_position);
+        _status_icon_sprite.set_position(icon_position);
+        _status_icon_sprite.set_visible(true);
     }
+}
+
+void Goblin::_show_status_icon(const bn::sprite_item& item, const bn::sprite_tiles_ptr& tiles,
+                               const bn::sprite_palette_ptr& palette, StatusIcon icon, int frame,
+                               const bn::fixed_point& icon_position)
+{
+    _status_icon_sprite.set_tiles_and_palette(item.shape_size(), tiles, palette);
+    _status_icon_sprite.set_position(icon_position);
+    _status_icon_sprite.set_visible(true);
+    _status_icon = icon;
+    _status_icon_frame = frame;
 }
 
 void Goblin::_update_timed_status_icon()
@@ -621,7 +635,8 @@ void Goblin::_update_timed_status_icon()
     _set_awareness_icon(_status_icon);
 }
 
-void Goblin::_move_direction(Direction direction, bn::fixed speed, const WorldBox* blocking_pushbox,
+void Goblin::_move_direction(Direction direction, bn::fixed speed,
+                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                              bool constrain_to_home)
 {
     int horizontal;
@@ -640,11 +655,12 @@ void Goblin::_move_direction(Direction direction, bn::fixed speed, const WorldBo
         next.set_y(clamp(next.y(), _home_position.y() - home_radius, _home_position.y() + home_radius));
     }
 
-    if(blocking_pushbox)
+    WorldBox current = world_pushbox();
+    WorldBox candidate = world_box(next, collision_body().pushbox.box);
+    for(int index = 0; index < blocking_pushboxes.count; ++index)
     {
-        WorldBox current = world_box(position(), collision_body().pushbox.box);
-        WorldBox candidate = world_box(next, collision_body().pushbox.box);
-        if(overlaps_strictly(candidate, *blocking_pushbox) && ! overlaps_strictly(current, *blocking_pushbox))
+        const WorldBox& blocking_pushbox = blocking_pushboxes.boxes[index];
+        if(overlaps_strictly(candidate, blocking_pushbox) && ! overlaps_strictly(current, blocking_pushbox))
         {
             apply_movement(position(), direction);
             return;
@@ -654,9 +670,10 @@ void Goblin::_move_direction(Direction direction, bn::fixed speed, const WorldBo
     apply_movement(next, direction);
 }
 
-void Goblin::_move_toward(const bn::fixed_point& target, bn::fixed speed, const WorldBox* blocking_pushbox)
+void Goblin::_move_toward(const bn::fixed_point& target, bn::fixed speed,
+                          const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     Direction movement_direction = direction_from_components(
             sign(target.x() - position().x()), sign(target.y() - position().y()), direction());
-    _move_direction(movement_direction, speed, blocking_pushbox, false);
+    _move_direction(movement_direction, speed, blocking_pushboxes, false);
 }

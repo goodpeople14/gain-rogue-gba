@@ -8,7 +8,7 @@
         const bn::fixed_point& current_position,
         const bn::fixed_point& delta,
         const Pushbox& moving_pushbox,
-        const WorldBoxList<3>& obstacles,
+        const WorldBoxList<max_movement_obstacles>& obstacles,
         const MovementBounds& bounds);
 
 #endif

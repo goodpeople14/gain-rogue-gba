@@ -22,25 +22,18 @@ DEBUG_PALETTE = [
     (42, 203, 210),  # hurtbox cyan
     (220, 55, 48),   # hitbox red
     (246, 210, 45),  # pushbox yellow
-]
-COMMIT_PALETTE = [
-    TRANSPARENT,
     (158, 86, 212),  # commit box purple
 ]
-HOURGLASS_PALETTE = [
+STATUS_PALETTE = [
     TRANSPARENT,
     (42, 42, 42),    # dark neutral keyline
-    (232, 229, 213), # light hourglass frame
-    (126, 126, 126), # minimal glass interior
-    (192, 125, 48)   # muted-gold sand
-]
-AWARENESS_PALETTE = [
-    TRANSPARENT,
-    (42, 42, 42),    # nearly-black neutral-gray keyline
     (82, 82, 82),    # dark neutral-gray, unlit bulb interior
     (181, 126, 39),  # muted gold bulb outline
     (250, 213, 47),  # bright yellow lit bulb interior and rays
-    (255, 246, 204)  # cream highlight
+    (255, 246, 204), # cream highlight
+    (232, 229, 213), # light hourglass frame
+    (126, 126, 126), # minimal glass interior
+    (192, 125, 48)   # muted-gold sand
 ]
 GOBLIN_PATH = Path("graphics/characters/enemies/goblin/goblin.bmp")
 TELEGRAPH_PATH = Path("graphics/effects/common/enemy_telegraph.bmp")
@@ -158,16 +151,16 @@ def generate_telegraph() -> None:
 def generate_recovery_hourglass() -> None:
     HOURGLASS_PATH.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("P", (8, 16), 0)
-    values = [component for color in HOURGLASS_PALETTE for component in color]
+    values = [component for color in STATUS_PALETTE for component in color]
     image.putpalette(values + [0] * (768 - len(values)))
     draw = ImageDraw.Draw(image)
 
     # Both frames keep the same wide-top/wide-bottom X silhouette and narrow waist.
     for offset_y in (0, 8):
         draw.line(((1, offset_y), (6, offset_y)), fill=1)
-        draw.line(((2, offset_y), (5, offset_y)), fill=2)
+        draw.line(((2, offset_y), (5, offset_y)), fill=6)
         draw.line(((1, offset_y + 7), (6, offset_y + 7)), fill=1)
-        draw.line(((2, offset_y + 7), (5, offset_y + 7)), fill=2)
+        draw.line(((2, offset_y + 7), (5, offset_y + 7)), fill=6)
         draw.point((1, offset_y + 1), fill=1)
         draw.point((2, offset_y + 2), fill=1)
         draw.point((3, offset_y + 3), fill=1)
@@ -182,20 +175,20 @@ def generate_recovery_hourglass() -> None:
         draw.point((6, offset_y + 6), fill=1)
 
     # Frame 0 starts with sand in the upper chamber; frame 1 finishes in the lower chamber.
-    draw.line(((2, 1), (5, 1)), fill=4)
-    draw.line(((3, 2), (4, 2)), fill=4)
-    draw.point((3, 3), fill=4)
-    draw.point((4, 5), fill=3)
-    draw.point((4, 11), fill=3)
-    draw.point((3, 12), fill=4)
-    draw.line(((3, 13), (4, 13)), fill=4)
+    draw.line(((2, 1), (5, 1)), fill=8)
+    draw.line(((3, 2), (4, 2)), fill=8)
+    draw.point((3, 3), fill=8)
+    draw.point((4, 5), fill=7)
+    draw.point((4, 11), fill=7)
+    draw.point((3, 12), fill=8)
+    draw.line(((3, 13), (4, 13)), fill=8)
     image.save(HOURGLASS_PATH)
 
 
 def generate_awareness_icons() -> None:
     AWARENESS_PATH.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("P", (8, 24), 0)
-    values = [component for color in AWARENESS_PALETTE for component in color]
+    values = [component for color in STATUS_PALETTE for component in color]
     image.putpalette(values + [0] * (768 - len(values)))
     draw = ImageDraw.Draw(image)
 
@@ -258,13 +251,13 @@ def generate_debug_corner(path: Path, color_index: int, dotted: bool, palette: l
     image.save(path)
 
 
-def validate(path: Path, size: tuple[int, int]) -> None:
+def validate(path: Path, size: tuple[int, int], palette: list[tuple[int, int, int]] = PALETTE) -> None:
     raw = path.read_bytes()
     assert int.from_bytes(raw[28:30], "little") == 8
     with Image.open(path) as image:
         assert image.mode == "P"
         assert image.size == size
-        assert set(image.get_flattened_data()).issubset(set(range(len(PALETTE))))
+        assert set(image.get_flattened_data()).issubset(set(range(len(palette))))
 
 
 def main() -> None:
@@ -276,13 +269,13 @@ def main() -> None:
     generate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
-    generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 1, False, COMMIT_PALETTE)
+    generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 4, False)
     validate(GOBLIN_PATH, (16, 128))
     validate(TELEGRAPH_PATH, (8, 8))
-    validate(HOURGLASS_PATH, (8, 16))
-    validate(AWARENESS_PATH, (8, 24))
+    validate(HOURGLASS_PATH, (8, 16), STATUS_PALETTE)
+    validate(AWARENESS_PATH, (8, 24), STATUS_PALETTE)
     for path in DEBUG_CORNER_PATHS.values():
-        validate(path, (8, 8))
+        validate(path, (8, 8), DEBUG_PALETTE)
     print("generated indexed 8bpp goblin, enemy telegraph, recovery hourglass, awareness icons, and collision debug corners")
 
 
