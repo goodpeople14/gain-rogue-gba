@@ -15,6 +15,8 @@ namespace
         { -40, -32 }, { 40, -32 }, { -40, 32 }, { 40, 32 }
     }};
     constexpr bn::array<int, GameScene::goblin_count> goblin_target_ids = {{ 10, 11, 12, 13 }};
+    constexpr bn::fixed_point crossbow_goblin_home_position(0, 64);
+    constexpr int crossbow_goblin_target_id = 14;
 
     constexpr MovementBounds player_bounds = Battlefield::movement_bounds(player_size, player_size);
 
@@ -42,7 +44,8 @@ namespace
     static_assert(player_bounds.min_x == -72 && player_bounds.max_x == 72);
     static_assert(player_bounds.min_y == -72 && player_bounds.max_y == 72);
     static_assert(goblin_target_ids_are_unique());
-    static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) == CollisionDebugBoxList::capacity);
+    static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 8 +
+                  CrossbowProjectilePool::capacity == CollisionDebugBoxList::capacity);
 }
 
 GameScene::GameScene() :
@@ -53,13 +56,15 @@ GameScene::GameScene() :
         Goblin(goblin_home_positions[1], goblin_target_ids[1]),
         Goblin(goblin_home_positions[2], goblin_target_ids[2]),
         Goblin(goblin_home_positions[3], goblin_target_ids[3])
-    }}
+    }},
+    _crossbow_goblin(crossbow_goblin_home_position, crossbow_goblin_target_id)
 {
     _player.set_visible(false);
     for(Goblin& goblin : _goblins)
     {
         goblin.set_visible(false);
     }
+    _crossbow_goblin.set_visible(false);
 }
 
 void GameScene::enter()
@@ -71,6 +76,8 @@ void GameScene::enter()
     {
         goblin.enter();
     }
+    _crossbow_goblin.enter();
+    _crossbow_projectiles.clear();
     _hit_effects.clear();
     _collision_debug_overlay.reset();
 }
@@ -84,7 +91,7 @@ void GameScene::update()
     {
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _active_goblin_pushboxes(), _player_bounds);
+                _active_enemy_pushboxes(), _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 
@@ -100,12 +107,17 @@ void GameScene::update()
     {
         _goblins[index].update(player_hurtbox, player_pushbox, _goblin_blocking_pushboxes(index, player_pushbox));
     }
+    _crossbow_goblin.update(player_hurtbox, player_pushbox, _crossbow_blocking_pushboxes(player_pushbox),
+                            _crossbow_projectiles);
+    _crossbow_projectiles.update();
 
     for(Goblin& goblin : _goblins)
     {
         goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
         goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     }
+    _crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+    _crossbow_projectiles.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     _hit_effects.update();
 
     if(bn::keypad::select_pressed())
@@ -136,12 +148,14 @@ void GameScene::_update_collision_debug_overlay()
     {
         goblin.append_collision_debug_boxes(player_hurtbox, boxes);
     }
+    _crossbow_goblin.append_collision_debug_boxes(player_hurtbox, boxes);
+    _crossbow_projectiles.append_collision_debug_boxes(boxes);
     _collision_debug_overlay.update(boxes);
 }
 
-WorldBoxList<GameScene::goblin_count> GameScene::_active_goblin_pushboxes() const
+WorldBoxList<GameScene::enemy_count> GameScene::_active_enemy_pushboxes() const
 {
-    WorldBoxList<goblin_count> result;
+    WorldBoxList<enemy_count> result;
 
     for(const Goblin& goblin : _goblins)
     {
@@ -150,6 +164,11 @@ WorldBoxList<GameScene::goblin_count> GameScene::_active_goblin_pushboxes() cons
             result.boxes[result.count] = goblin.world_pushbox();
             ++result.count;
         }
+    }
+    if(_crossbow_goblin.active())
+    {
+        result.boxes[result.count] = _crossbow_goblin.world_pushbox();
+        ++result.count;
     }
 
     return result;
@@ -167,6 +186,30 @@ WorldBoxList<max_movement_obstacles> GameScene::_goblin_blocking_pushboxes(
         if(index != goblin_index && _goblins[index].active())
         {
             result.boxes[result.count] = _goblins[index].world_pushbox();
+            ++result.count;
+        }
+    }
+    if(_crossbow_goblin.active())
+    {
+        result.boxes[result.count] = _crossbow_goblin.world_pushbox();
+        ++result.count;
+    }
+
+    return result;
+}
+
+WorldBoxList<max_movement_obstacles> GameScene::_crossbow_blocking_pushboxes(
+        const WorldBox& player_pushbox) const
+{
+    WorldBoxList<max_movement_obstacles> result;
+    result.boxes[result.count] = player_pushbox;
+    ++result.count;
+
+    for(const Goblin& goblin : _goblins)
+    {
+        if(goblin.active())
+        {
+            result.boxes[result.count] = goblin.world_pushbox();
             ++result.count;
         }
     }

@@ -22,7 +22,10 @@ struct CollisionDebugBox
 class CollisionDebugBoxList
 {
 public:
-    static constexpr int capacity = 16;
+    // Player (2 + two melee hitboxes), four melee goblins (3 each), one
+    // crossbow goblin (two bodies plus six directional Commit cells), and
+    // every landing slot in its four-arrow pool.
+    static constexpr int capacity = 28;
 
     bool add(const WorldBox& box, CollisionDebugBoxType type)
     {
