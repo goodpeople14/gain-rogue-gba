@@ -240,6 +240,10 @@ void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectMan
 bool CrossbowGoblin::active() const { return _active; }
 WorldBox CrossbowGoblin::world_hurtbox() const { return world_box(position(), collision_body().hurtbox.box); }
 WorldBox CrossbowGoblin::world_pushbox() const { return world_box(position(), collision_body().pushbox.box); }
+WorldBox CrossbowGoblin::movement_obstacle_query_area() const
+{
+    return _active ? world_pushbox() : expanded_box(world_box(_home_position, collision_body().pushbox.box), respawn_clearance);
+}
 
 void CrossbowGoblin::append_collision_debug_boxes(const WorldBox&, CollisionDebugBoxList& boxes) const
 {

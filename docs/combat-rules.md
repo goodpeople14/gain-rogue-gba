@@ -15,6 +15,12 @@
 
 새 기능이 이 책임에 맞지 않아 구조 변경이 필요하면 기능 구현과 분리해 먼저 제안한다.
 
+## 이동 공간 후보
+
+- `SpatialManager`는 Stage BLOCKED Cell과 활성 Actor Pushbox를 이동 충돌 후보로 제공한다.
+- `resolve_movement()`가 기존 Pushbox 충돌과 `MovementBounds`를 포함해 실제 이동 위치를 결정한다.
+- SpatialManager는 Hitbox/Hurtbox 판정, 공격, 피해 또는 상태 전환을 수행하지 않는다.
+
 ## 충돌 영역의 의미
 
 - `Hitbox`: 대상과 접촉해 공격을 전달하는 영역
