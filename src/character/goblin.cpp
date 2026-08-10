@@ -30,7 +30,8 @@ namespace
     constexpr int commit_margin = 2;
     constexpr int goblin_size = 16;
     constexpr int stuck_frames_before_detour = 6;
-    constexpr int max_detour_frames = 24;
+    // At 0.5px per frame, this moves a goblin one 16px Stage obstacle width.
+    constexpr int max_detour_frames = 32;
 
     [[nodiscard]] constexpr int next_stuck_frames(int current_frames, bool direct_move_full)
     {
@@ -116,6 +117,13 @@ namespace
     [[nodiscard]] constexpr int absolute(int value)
     {
         return value < 0 ? -value : value;
+    }
+
+    [[nodiscard]] bn::fixed squared_distance(const bn::fixed_point& first, const bn::fixed_point& second)
+    {
+        bn::fixed x = first.x() - second.x();
+        bn::fixed y = first.y() - second.y();
+        return (x * x) + (y * y);
     }
 
     [[nodiscard]] constexpr Direction nearest_direction(int horizontal, int vertical, Direction fallback)
@@ -780,20 +788,32 @@ void Goblin::_reset_local_avoidance()
 }
 
 void Goblin::_start_local_detour(
-        Direction desired_direction, bn::fixed speed,
+        const bn::fixed_point& target, Direction desired_direction, bn::fixed speed,
         const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     bn::array<Direction, 4> candidates = detour_candidates(desired_direction, _target_id % 2 == 0);
+    bool found_candidate = false;
+    bn::fixed best_distance = 0;
+
     for(Direction candidate : candidates)
     {
         bn::fixed_point resolved_position;
         if(_resolve_move_direction(candidate, speed, blocking_pushboxes, false, resolved_position) ==
            MovementResult::FULL)
         {
-            _detour_direction = candidate;
-            _detour_frames = max_detour_frames;
-            return;
+            bn::fixed candidate_distance = squared_distance(resolved_position, target);
+            if(! found_candidate || candidate_distance < best_distance)
+            {
+                found_candidate = true;
+                best_distance = candidate_distance;
+                _detour_direction = candidate;
+            }
         }
+    }
+
+    if(found_candidate)
+    {
+        _detour_frames = max_detour_frames;
     }
 }
 
@@ -839,6 +859,6 @@ void Goblin::_move_toward_with_local_avoidance(
     _stuck_frames = next_stuck_frames(_stuck_frames, false);
     if(_stuck_frames == stuck_frames_before_detour)
     {
-        _start_local_detour(desired_direction, speed, blocking_pushboxes);
+        _start_local_detour(target, desired_direction, speed, blocking_pushboxes);
     }
 }

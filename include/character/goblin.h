@@ -86,7 +86,7 @@ private:
     void _update_timed_status_icon();
     void _reset_local_avoidance();
     void _start_local_detour(
-            Direction desired_direction, bn::fixed speed,
+            const bn::fixed_point& target, Direction desired_direction, bn::fixed speed,
             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _move_toward_with_local_avoidance(
             const bn::fixed_point& target, bn::fixed speed,
