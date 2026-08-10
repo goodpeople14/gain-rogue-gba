@@ -33,6 +33,7 @@ GameScene ─────────────── 시스템 조정
 
 - `StageData`는 배경 그래픽과 분리된 `WALKABLE`/`BLOCKED` 이동 Cell을 제공한다.
 - `SpatialManager`는 현재 Stage의 BLOCKED Cell과 활성 Actor Pushbox 중 이동 주변 후보만 반환한다.
+- `SpatialDebugOverlay`는 StageData의 BLOCKED Cell만 BG로 표시한다. CollisionDebugOverlay의 Actor/Combat box 표시와 책임을 섞지 않는다.
 - `GameScene`은 Player와 각 Enemy의 이동 전후에 Actor 위치를 SpatialManager에 동기화한다.
 - `resolve_movement()`는 SpatialManager 후보와 기존 `MovementBounds`를 사용해 실제 Pushbox 이동 위치를 최종 결정한다.
 - SpatialManager는 이동 의도, AI, 공격, 피해, Effect 또는 게임 상태를 결정하지 않는다.

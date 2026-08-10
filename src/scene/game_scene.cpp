@@ -65,6 +65,7 @@ GameScene::GameScene() :
         Goblin(goblin_home_positions[3], goblin_target_ids[3])
     }},
     _crossbow_goblin(crossbow_goblin_home_position, crossbow_goblin_target_id),
+    _spatial_debug_overlay(stage1::data),
     _spatial_manager(stage1::data)
 {
     _player.set_visible(false);
@@ -88,6 +89,7 @@ void GameScene::enter()
     _crossbow_projectiles.clear();
     _hit_effects.clear();
     _collision_debug_overlay.reset();
+    _spatial_debug_overlay.reset();
     _sync_spatial_actors();
 }
 
@@ -144,6 +146,7 @@ void GameScene::update()
     if(bn::keypad::select_pressed())
     {
         _collision_debug_overlay.toggle();
+        _spatial_debug_overlay.set_visible(_collision_debug_overlay.enabled());
     }
 
     _update_collision_debug_overlay();

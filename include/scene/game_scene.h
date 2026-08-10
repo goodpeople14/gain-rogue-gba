@@ -10,6 +10,7 @@
 #include "combat/crossbow_projectile_pool.h"
 #include "combat/hit_effect_manager.h"
 #include "debug/collision_debug_overlay.h"
+#include "debug/spatial_debug_overlay.h"
 #include "world/battlefield.h"
 #include "world/spatial_manager.h"
 
@@ -40,6 +41,7 @@ private:
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
     CollisionDebugOverlay _collision_debug_overlay;
+    SpatialDebugOverlay _spatial_debug_overlay;
     SpatialManager _spatial_manager;
 };
 
