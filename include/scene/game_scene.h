@@ -11,6 +11,7 @@
 #include "combat/hit_effect_manager.h"
 #include "debug/collision_debug_overlay.h"
 #include "world/battlefield.h"
+#include "world/spatial_manager.h"
 
 class GameScene
 {
@@ -26,11 +27,9 @@ public:
 
 private:
     void _update_collision_debug_overlay();
-    [[nodiscard]] WorldBoxList<enemy_count> _active_enemy_pushboxes() const;
-    [[nodiscard]] WorldBoxList<max_movement_obstacles> _goblin_blocking_pushboxes(
-            int goblin_index, const WorldBox& player_pushbox) const;
-    [[nodiscard]] WorldBoxList<max_movement_obstacles> _crossbow_blocking_pushboxes(
-            const WorldBox& player_pushbox) const;
+    void _sync_spatial_actors();
+    void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active);
+    [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
 
     Battlefield _battlefield;
     Swordsman _player;
@@ -41,6 +40,7 @@ private:
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
     CollisionDebugOverlay _collision_debug_overlay;
+    SpatialManager _spatial_manager;
 };
 
 #endif

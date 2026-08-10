@@ -414,6 +414,16 @@ WorldBox Goblin::world_pushbox() const
     return world_box(position(), collision_body().pushbox.box);
 }
 
+WorldBox Goblin::movement_obstacle_query_area() const
+{
+    if(_active)
+    {
+        return world_pushbox();
+    }
+
+    return expanded_box(world_box(_home_position, collision_body().pushbox.box), respawn_clearance);
+}
+
 void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const
 {
     if(! _active)

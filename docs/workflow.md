@@ -43,6 +43,25 @@ Repository 조사
 
 ## 3. 브랜치 작업 원칙
 
+### 최신 main 기준점 검증
+
+신규 작업 브랜치는 로컬 `main`이 최신이라고 가정하지 않고, 원격 `main`을 명시적으로 기준점으로 삼는다.
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+git switch -c <branch> origin/main
+
+git merge-base HEAD origin/main
+git rev-parse origin/main
+```
+
+새 브랜치라면 `merge-base HEAD origin/main`과 `origin/main`이 같아야 한다. 필요할 때
+`git rev-list --left-right --count origin/main...HEAD`로 `origin/main` 전용 commit 수가 0인지 확인한다.
+기준점이 맞지 않으면 구현을 시작하지 않는다. 기존 작업 commit이 있는 브랜치는 임의 삭제·reset하지 않고
+merge, rebase 또는 cherry-pick 여부를 별도로 판단한다.
+
 - Repository 변경이 필요한 작업은 기본적으로 최신 `main`을 기준으로 작업 브랜치를 생성한다.
 - `main` 직접 수정은 기본값이 아니다.
 - 기능, 버그 수정, 구조 변경, 문서 정책 변경은 작업 브랜치 사용을 기본으로 한다.
