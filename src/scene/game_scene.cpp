@@ -16,7 +16,8 @@ namespace
         { -40, -32 }, { 40, -32 }, { -40, 32 }, { 40, 32 }
     }};
     constexpr bn::array<int, GameScene::goblin_count> goblin_target_ids = {{ 10, 11, 12, 13 }};
-    constexpr bn::fixed_point crossbow_goblin_home_position(0, 64);
+    // The home must leave the existing 2px respawn clearance outside Stage1's bottom BLOCKED cell.
+    constexpr bn::fixed_point crossbow_goblin_home_position(0, 60);
     constexpr int crossbow_goblin_target_id = 14;
     constexpr int movement_query_padding = 1;
     constexpr bn::array<SpatialActorId, GameScene::goblin_count> goblin_spatial_actor_ids = {{
