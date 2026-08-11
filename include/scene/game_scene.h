@@ -30,13 +30,16 @@ public:
         READY,
         GO,
         PLAYING,
-        CLEARED
+        CLEARED,
+        CONGRATULATIONS,
+        GAME_OVER
     };
 
     GameScene();
 
     void enter();
-    void update();
+    void exit();
+    [[nodiscard]] bool update();
 
 private:
     enum class StageId
@@ -53,7 +56,7 @@ private:
     void _set_stage_message(const char* text, int character_count, int y, int spacing, bn::fixed scale);
     void _clear_stage_message();
     [[nodiscard]] bool _stage_has_enemies() const;
-    [[nodiscard]] bool _all_stage1_enemies_defeated() const;
+    [[nodiscard]] bool _all_stage_enemies_defeated() const;
     void _update_collision_debug_overlay();
     void _sync_spatial_actors();
     void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active);
@@ -70,7 +73,7 @@ private:
     CollisionDebugOverlay _collision_debug_overlay;
     SpatialDebugOverlay _spatial_debug_overlay;
     SpatialManager _spatial_manager;
-    bn::vector<bn::sprite_ptr, 6> _stage_message_sprites;
+    bn::vector<bn::sprite_ptr, 20> _stage_message_sprites;
     StageId _stage = StageId::STAGE_1;
     StagePhase _stage_phase = StagePhase::INTRO;
     int _phase_frames_remaining = 0;

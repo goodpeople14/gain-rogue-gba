@@ -25,6 +25,8 @@ public:
 
     SpatialManager(const StageData& stage, const StageStaticObstacleData& static_obstacles);
 
+    void set_stage(const StageData& stage, const StageStaticObstacleData& static_obstacles);
+
     void set_actor(SpatialActorId actor_id, const WorldBox& pushbox);
     void update_actor(SpatialActorId actor_id, const WorldBox& pushbox);
     void set_actor_active(SpatialActorId actor_id, bool active);
@@ -41,8 +43,8 @@ private:
         bool active = false;
     };
 
-    const StageData& _stage;
-    const StageStaticObstacleData& _static_obstacles;
+    const StageData* _stage;
+    const StageStaticObstacleData* _static_obstacles;
     bn::array<Actor, actor_count> _actors = {};
 };
 

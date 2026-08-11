@@ -318,6 +318,11 @@ void Goblin::enter()
     set_visible(true);
 }
 
+void Goblin::set_home_position(const bn::fixed_point& position)
+{
+    _home_position = position;
+}
+
 void Goblin::set_respawn_enabled(bool enabled)
 {
     _respawn_enabled = enabled;

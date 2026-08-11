@@ -210,6 +210,12 @@ void CrossbowGoblin::enter()
     _set_telegraph_visible(false); apply_movement(_home_position, Direction::DOWN); set_visible(true);
 }
 
+void CrossbowGoblin::set_home_position(const bn::fixed_point& position)
+{
+    _home_position = position;
+    _locked_target = position;
+}
+
 void CrossbowGoblin::set_respawn_enabled(bool enabled)
 {
     _respawn_enabled = enabled;

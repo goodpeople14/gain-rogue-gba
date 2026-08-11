@@ -26,6 +26,12 @@ void Game::update()
     }
     else
     {
-        _game_scene.update();
+        if(_game_scene.update())
+        {
+            _game_scene.exit();
+            bn::bg_palettes::set_transparent_color(title_background_color);
+            _title_scene.show();
+            _state = GameState::TITLE;
+        }
     }
 }

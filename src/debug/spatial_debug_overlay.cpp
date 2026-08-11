@@ -67,13 +67,9 @@ namespace
     static_assert(stage1_debug_map[(25 * 32) + 25] == blocked_tile_index);
 }
 
-SpatialDebugOverlay::SpatialDebugOverlay(const StageData& stage) : _stage(stage)
+SpatialDebugOverlay::SpatialDebugOverlay(const StageData& stage) : _stage(&stage)
 {
-    BN_ASSERT(stage.width <= map_width);
-    BN_ASSERT(stage.height <= map_height);
-    BN_ASSERT(stage.tile_size == debug_tile_size);
-
-    _map_cells = make_debug_map<map_width, map_height>(_stage);
+    set_stage(stage);
 
     bn::regular_bg_item debug_item(
             debug_tiles, debug_colors, bn::bpp_mode::BPP_4,
@@ -81,6 +77,23 @@ SpatialDebugOverlay::SpatialDebugOverlay(const StageData& stage) : _stage(stage)
     _background = debug_item.create_bg(0, 0);
     _background->set_priority(2);
     _background->set_visible(false);
+}
+
+void SpatialDebugOverlay::set_stage(const StageData& stage)
+{
+    BN_ASSERT(stage.width <= map_width);
+    BN_ASSERT(stage.height <= map_height);
+    BN_ASSERT(stage.tile_size == debug_tile_size);
+
+    _stage = &stage;
+    _map_cells = make_debug_map<map_width, map_height>(*_stage);
+    if(_background)
+    {
+        bn::regular_bg_item debug_item(
+                debug_tiles, debug_colors, bn::bpp_mode::BPP_4,
+                _map_cells[0], bn::size(map_width, map_height));
+        _background->set_item(debug_item);
+    }
 }
 
 void SpatialDebugOverlay::reset()
