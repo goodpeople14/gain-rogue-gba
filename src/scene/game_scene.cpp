@@ -292,6 +292,22 @@ void GameScene::enter()
     _start_stage(StageId::STAGE_1);
 }
 
+void GameScene::exit()
+{
+    _battlefield.set_visible(false);
+    _player.set_visible(false);
+    for(Goblin& goblin : _goblins)
+    {
+        goblin.set_visible(false);
+    }
+    _crossbow_goblin.set_visible(false);
+    _crossbow_projectiles.clear();
+    _hit_effects.clear();
+    _collision_debug_overlay.reset();
+    _spatial_debug_overlay.reset();
+    _clear_stage_message();
+}
+
 bool GameScene::update()
 {
     if(_stage_phase == StagePhase::CONGRATULATIONS || _stage_phase == StagePhase::GAME_OVER)

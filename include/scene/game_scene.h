@@ -38,6 +38,7 @@ public:
     GameScene();
 
     void enter();
+    void exit();
     [[nodiscard]] bool update();
 
 private:
