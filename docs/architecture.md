@@ -31,8 +31,10 @@ GameScene ─────────────── 시스템 조정
 
 ## 이동 공간 조회
 
-- `StageData`는 배경 그래픽과 분리된 `WALKABLE`/`BLOCKED` 이동 Cell을 제공한다.
-- `SpatialManager`는 현재 Stage의 BLOCKED Cell과 활성 Actor Pushbox 중 이동 주변 후보만 반환한다.
+- `Battlefield`는 `stage1_terrain` regular BG asset으로 Stage1의 시각 배경과 기존 좌우 UI 패널 배경을 표시한다. Visual tile과 `StageData` 이동 Cell은 서로 독립이다.
+- `StageData`는 배경 그래픽과 분리된 `WALKABLE`/`BLOCKED` 이동 Cell을 제공한다. 외곽과 넓은 지형은 Cell로 표현한다.
+- `StageStaticObstacleData`는 바위처럼 시각 표현보다 작은 충돌 영역이 필요한 정적 WorldBox를 제공한다.
+- `SpatialManager`는 현재 Stage의 BLOCKED Cell, 정적 obstacle, 활성 Actor Pushbox 중 이동 주변 후보만 반환한다.
 - `SpatialDebugOverlay`는 StageData의 BLOCKED Cell만 BG로 표시한다. CollisionDebugOverlay의 Actor/Combat box 표시와 책임을 섞지 않는다.
 - `GameScene`은 Player와 각 Enemy의 이동 전후에 Actor 위치를 SpatialManager에 동기화한다.
 - `resolve_movement()`는 SpatialManager 후보와 기존 `MovementBounds`를 사용해 실제 Pushbox 이동 위치를 최종 결정한다.

@@ -62,10 +62,14 @@ namespace
     constexpr bn::fixed chase_speed = bn::fixed(1) / 2;
     constexpr bn::fixed diagonal_ratio(0.70710678f);
     constexpr MovementBounds goblin_movement_bounds = Battlefield::movement_bounds(goblin_size, goblin_size);
+    constexpr Pushbox goblin_body_pushbox = { { 0, 3, 6, 6 } };
     constexpr CollisionBody goblin_collision_body = {
         { { 0, 1, 8, 10 } },
-        { { 0, 4, 6, 6 } }
+        goblin_body_pushbox
     };
+
+    static_assert(goblin_body_pushbox.box.offset_y == 3);
+    static_assert(goblin_body_pushbox.box.width == 6 && goblin_body_pushbox.box.height == 6);
     constexpr bn::array<Direction, 4> roam_directions = {
         Direction::RIGHT, Direction::DOWN, Direction::LEFT, Direction::UP
     };

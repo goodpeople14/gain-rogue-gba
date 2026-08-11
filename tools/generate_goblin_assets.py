@@ -46,6 +46,7 @@ DEBUG_CORNER_PATHS = {
     "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
     "push": Path("graphics/effects/common/collision_debug_push_corner.bmp"),
     "commit": Path("graphics/effects/common/collision_debug_commit_corner.bmp"),
+    "static_obstacle": Path("graphics/effects/common/collision_debug_static_obstacle_corner.bmp"),
 }
 DIRECTIONS = ((0, 1), (-1, 1), (-1, 0), (-1, -1),
               (0, -1), (1, -1), (1, 0), (1, 1))
@@ -300,6 +301,20 @@ def generate_debug_corner(path: Path, color_index: int, dotted: bool, palette: l
     image.save(path)
 
 
+def generate_static_obstacle_debug_corner() -> None:
+    path = DEBUG_CORNER_PATHS["static_obstacle"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("P", (8, 8), 0)
+    values = [component for color in DEBUG_PALETTE for component in color]
+    image.putpalette(values + [0] * (768 - len(values)))
+    draw = ImageDraw.Draw(image)
+    # The Stage1 rock box is only 12x12.  Full-length corner strokes overlap
+    # into one clear frame at that size instead of reading as isolated dots.
+    draw.line(((0, 0), (7, 0)), fill=4)
+    draw.line(((0, 0), (0, 7)), fill=4)
+    image.save(path)
+
+
 def validate(path: Path, size: tuple[int, int], palette: list[tuple[int, int, int]] = PALETTE) -> None:
     raw = path.read_bytes()
     assert int.from_bytes(raw[28:30], "little") == 8
@@ -307,6 +322,24 @@ def validate(path: Path, size: tuple[int, int], palette: list[tuple[int, int, in
         assert image.mode == "P"
         assert image.size == size
         assert set(image.get_flattened_data()).issubset(set(range(len(palette))))
+
+
+def validate_debug_corner(path: Path, color_index: int, dotted: bool, full_length: bool = False) -> None:
+    with Image.open(path) as image:
+        pixels = image.load()
+        if dotted:
+            assert pixels[0, 0] == color_index
+            assert pixels[2, 0] == color_index
+            assert pixels[0, 2] == color_index
+        else:
+            assert pixels[0, 0] == color_index
+            assert pixels[4, 0] == color_index
+            assert pixels[0, 4] == color_index
+            assert pixels[1, 0] == color_index
+            assert pixels[0, 1] == color_index
+            if full_length:
+                assert pixels[7, 0] == color_index
+                assert pixels[0, 7] == color_index
 
 
 def main() -> None:
@@ -322,6 +355,7 @@ def main() -> None:
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 4, False)
+    generate_static_obstacle_debug_corner()
     validate(GOBLIN_PATH, (16, 128))
     validate(CROSSBOW_GOBLIN_PATH, (16, 128))
     validate(CROSSBOW_ARROW_PATH, (8, 8))
@@ -330,6 +364,11 @@ def main() -> None:
     validate(AWARENESS_PATH, (8, 24), STATUS_PALETTE)
     for path in DEBUG_CORNER_PATHS.values():
         validate(path, (8, 8), DEBUG_PALETTE)
+    validate_debug_corner(DEBUG_CORNER_PATHS["hurt"], 1, False)
+    validate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
+    validate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
+    validate_debug_corner(DEBUG_CORNER_PATHS["commit"], 4, False)
+    validate_debug_corner(DEBUG_CORNER_PATHS["static_obstacle"], 4, False, True)
     print("generated indexed 8bpp goblin, crossbow goblin, arrow, status icons, and collision debug corners")
 
 
