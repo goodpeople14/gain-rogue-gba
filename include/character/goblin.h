@@ -34,7 +34,7 @@ public:
     void enter();
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
-    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
     void resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
