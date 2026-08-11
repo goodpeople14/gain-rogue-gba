@@ -1,6 +1,7 @@
 #include "combat/collision/movement_collision.h"
 
 #include "combat/collision/collision_math.h"
+#include "world/stages/stage1.h"
 
 namespace
 {
@@ -147,7 +148,7 @@ namespace
     [[nodiscard]] constexpr bool rock_inset_tests()
     {
         constexpr int rock_visual_size = 16;
-        constexpr int rock_collision_size = 12;
+        constexpr int rock_collision_size = 10;
         constexpr Pushbox player_pushbox = { { 0, 3, 8, 8 } };
         constexpr WorldBox rock_visual = { { 0, 0 }, rock_visual_size, rock_visual_size };
         constexpr WorldBox rock_collision = { { 0, 0 }, rock_collision_size, rock_collision_size };
@@ -157,29 +158,82 @@ namespace
         obstacles.count = 1;
 
         // The sprite overlaps the rounded visual corner, while the actual
-        // pushbox remains outside the 2px-inset collision box.
-        constexpr bn::fixed_point corner_clearance_start(-11, -11);
+        // pushbox remains outside the 3px-inset collision box.
+        constexpr bn::fixed_point corner_clearance_start(-10, -10);
         bn::fixed_point corner_clearance = resolve_movement_unbounded(
                 corner_clearance_start, { diagonal_step, diagonal_step }, player_pushbox, obstacles);
 
         // Moving one pixel closer reaches the collision box; X is blocked and
         // the existing dominant-axis tie rule preserves the tangent Y slide.
-        constexpr bn::fixed_point entering_start(-10, -10);
+        constexpr bn::fixed_point entering_start(-9, -10);
         bn::fixed_point entering_collision = resolve_movement_unbounded(
                 entering_start, { diagonal_step, diagonal_step }, player_pushbox, obstacles);
 
-        return rock_visual.width - rock_collision.width == 4 &&
-               rock_visual.height - rock_collision.height == 4 &&
+        return rock_visual.width - rock_collision.width == 6 &&
+               rock_visual.height - rock_collision.height == 6 &&
                overlaps_strictly({ corner_clearance_start, rock_visual_size, rock_visual_size }, rock_visual) &&
                ! overlaps_strictly(world_box(corner_clearance_start, player_pushbox.box), rock_collision) &&
-               corner_clearance == bn::fixed_point(-11 + diagonal_step, -11 + diagonal_step) &&
-               entering_collision == bn::fixed_point(-10, -10 + diagonal_step) &&
+               corner_clearance == bn::fixed_point(-10 + diagonal_step, -10 + diagonal_step) &&
+               entering_collision == bn::fixed_point(-9, -10 + diagonal_step) &&
                ! overlaps_strictly(world_box(entering_collision, player_pushbox.box), rock_collision);
+    }
+
+    [[nodiscard]] constexpr bool rock_collision_candidate_passes(int collision_size)
+    {
+        constexpr int rock_visual_size = 16;
+        constexpr Pushbox player_pushbox = { { 0, 3, 8, 8 } };
+        constexpr bn::fixed diagonal_step(0.70710678f);
+        WorldBoxList<max_movement_obstacles> obstacles;
+        obstacles.boxes[0] = { { 0, 0 }, collision_size, collision_size };
+        obstacles.count = 1;
+
+        bn::fixed_point top_left = resolve_movement_unbounded(
+                { -10, -10 }, { diagonal_step, diagonal_step }, player_pushbox, obstacles);
+        bn::fixed_point top_right = resolve_movement_unbounded(
+                { 10, -10 }, { -diagonal_step, diagonal_step }, player_pushbox, obstacles);
+        bn::fixed_point bottom_left = resolve_movement_unbounded(
+                { -10, 10 }, { diagonal_step, -diagonal_step }, player_pushbox, obstacles);
+        bn::fixed_point bottom_right = resolve_movement_unbounded(
+                { 10, 10 }, { -diagonal_step, -diagonal_step }, player_pushbox, obstacles);
+        bn::fixed_point left_side = resolve_movement_unbounded(
+                { -(collision_size / 2) - 4, -3 }, { 1, 0 }, player_pushbox, obstacles);
+        bn::fixed_point right_side = resolve_movement_unbounded(
+                { (collision_size / 2) + 4, -3 }, { -1, 0 }, player_pushbox, obstacles);
+        bn::fixed_point top_side = resolve_movement_unbounded(
+                { 0, -(collision_size / 2) - 7 }, { 0, 1 }, player_pushbox, obstacles);
+        bn::fixed_point bottom_side = resolve_movement_unbounded(
+                { 0, (collision_size / 2) + 1 }, { 0, -1 }, player_pushbox, obstacles);
+
+        return top_left == bn::fixed_point(-10 + diagonal_step, -10 + diagonal_step) &&
+               top_right == bn::fixed_point(10 - diagonal_step, -10 + diagonal_step) &&
+               bottom_left == bn::fixed_point(-10 + diagonal_step, 10 - diagonal_step) &&
+               bottom_right == bn::fixed_point(10 - diagonal_step, 10 - diagonal_step) &&
+               left_side.x() == -(collision_size / 2) - 4 &&
+               right_side.x() == (collision_size / 2) + 4 &&
+               top_side.y() == -(collision_size / 2) - 7 &&
+               bottom_side.y() == (collision_size / 2) + 1 &&
+               ! overlaps_strictly(world_box(left_side, player_pushbox.box), obstacles.boxes[0]) &&
+               ! overlaps_strictly(world_box(right_side, player_pushbox.box), obstacles.boxes[0]) &&
+               ! overlaps_strictly(world_box(top_side, player_pushbox.box), obstacles.boxes[0]) &&
+               ! overlaps_strictly(world_box(bottom_side, player_pushbox.box), obstacles.boxes[0]) &&
+               rock_visual_size > collision_size;
+    }
+
+    [[nodiscard]] constexpr int largest_passing_rock_collision_size()
+    {
+        return rock_collision_candidate_passes(12) ? 12 :
+               rock_collision_candidate_passes(10) ? 10 :
+               rock_collision_candidate_passes(8) ? 8 : 0;
     }
 
     static_assert(movement_collision_tests());
     static_assert(corner_slide_tests());
     static_assert(rock_inset_tests());
+    static_assert(! rock_collision_candidate_passes(12));
+    static_assert(rock_collision_candidate_passes(10));
+    static_assert(rock_collision_candidate_passes(8));
+    static_assert(largest_passing_rock_collision_size() == 10);
+    static_assert(stage1::rock_collision_size == largest_passing_rock_collision_size());
     static_assert(vertical_axis_has_priority({ bn::fixed(0.5), 1 }));
     static_assert(! vertical_axis_has_priority({ 1, 1 }));
 }

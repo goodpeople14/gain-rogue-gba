@@ -114,10 +114,10 @@ namespace stage1
 
     constexpr StageData data = { width, height, tile_size, movement_cells };
 
-    // The visual rock spans cells (7-8, 6-7).  Collision is inset by 2px on
+    // The visual rock spans cells (7-8, 6-7).  Collision is inset by 3px on
     // every side so the rounded 16x16 drawing is not treated as a square wall.
     constexpr int rock_visual_size = 16;
-    constexpr int rock_collision_inset = 2;
+    constexpr int rock_collision_inset = 3;
     constexpr int rock_collision_size = rock_visual_size - (rock_collision_inset * 2);
     constexpr bn::fixed_point rock_visual_center(-16, -24);
     constexpr int static_obstacle_count = 1;
@@ -132,7 +132,7 @@ namespace stage1
     static_assert(stage_cell_at(data, 9, 9) == StageCell::WALKABLE);
     static_assert(stage_cell_at(data, 7, 6) == StageCell::WALKABLE);
     static_assert(rock_visual_size == 16);
-    static_assert(rock_collision_size == 12);
+    static_assert(rock_collision_size == 10);
     static_assert(static_obstacle_boxes[0].center == rock_visual_center);
     static_assert(static_obstacle_boxes[0].width == rock_collision_size &&
                   static_obstacle_boxes[0].height == rock_collision_size);
