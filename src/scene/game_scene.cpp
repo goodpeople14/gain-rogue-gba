@@ -107,7 +107,7 @@ namespace
         return result;
     }
 
-    constexpr bn::array<bn::tile, 19> stage_glyph_tiles = {
+    constexpr bn::array<bn::tile, 20> stage_glyph_tiles = {
         make_stage_glyph({ 14, 17, 17, 31, 17, 17, 17 }),  // A
         make_stage_glyph({ 30, 17, 17, 17, 17, 17, 30 }),  // D
         make_stage_glyph({ 31, 16, 16, 30, 16, 16, 31 }),  // E
@@ -126,7 +126,8 @@ namespace
         make_stage_glyph({ 16, 16, 16, 16, 16, 16, 31 }),  // L
         make_stage_glyph({ 17, 27, 21, 17, 17, 17, 17 }),  // M
         make_stage_glyph({ 17, 25, 21, 19, 17, 17, 17 }),  // N
-        make_stage_glyph({ 17, 17, 17, 17, 17, 17, 14 })   // U
+        make_stage_glyph({ 17, 17, 17, 17, 17, 17, 14 }),  // U
+        make_stage_glyph({ 17, 17, 17, 10, 10, 4, 4 })     // V
     };
 
     constexpr bn::array<bn::color, 16> stage_glyph_colors = {
@@ -163,6 +164,7 @@ namespace
         case 'M': return 16;
         case 'N': return 17;
         case 'U': return 18;
+        case 'V': return 19;
         default: return -1;
         }
     }
@@ -262,6 +264,7 @@ namespace
     static_assert(! phase_runs_gameplay(GameScene::StagePhase::GO));
     static_assert(phase_runs_gameplay(GameScene::StagePhase::PLAYING));
     static_assert(phase_allows_player_movement(GameScene::StagePhase::CLEARED));
+    static_assert(stage_glyph_index('V') >= 0);
 }
 
 GameScene::GameScene() :
