@@ -3,6 +3,7 @@
 #include "bn_sprite_items_collision_debug_hit_corner.h"
 #include "bn_sprite_items_collision_debug_hurt_corner.h"
 #include "bn_sprite_items_collision_debug_push_corner.h"
+#include "bn_sprite_items_collision_debug_static_obstacle_corner.h"
 #include "bn_sprite_items_collision_debug_commit_corner.h"
 
 namespace
@@ -21,6 +22,8 @@ namespace
             return bn::sprite_items::collision_debug_push_corner;
         case CollisionDebugBoxType::COMMIT_BOX:
             return bn::sprite_items::collision_debug_commit_corner;
+        case CollisionDebugBoxType::STATIC_OBSTACLE:
+            return bn::sprite_items::collision_debug_static_obstacle_corner;
         default:
             return bn::sprite_items::collision_debug_hurt_corner;
         }

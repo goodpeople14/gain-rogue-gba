@@ -46,6 +46,7 @@ DEBUG_CORNER_PATHS = {
     "hit": Path("graphics/effects/common/collision_debug_hit_corner.bmp"),
     "push": Path("graphics/effects/common/collision_debug_push_corner.bmp"),
     "commit": Path("graphics/effects/common/collision_debug_commit_corner.bmp"),
+    "static_obstacle": Path("graphics/effects/common/collision_debug_static_obstacle_corner.bmp"),
 }
 DIRECTIONS = ((0, 1), (-1, 1), (-1, 0), (-1, -1),
               (0, -1), (1, -1), (1, 0), (1, 1))
@@ -322,6 +323,7 @@ def main() -> None:
     generate_debug_corner(DEBUG_CORNER_PATHS["hit"], 2, False)
     generate_debug_corner(DEBUG_CORNER_PATHS["push"], 3, True)
     generate_debug_corner(DEBUG_CORNER_PATHS["commit"], 4, False)
+    generate_debug_corner(DEBUG_CORNER_PATHS["static_obstacle"], 4, True)
     validate(GOBLIN_PATH, (16, 128))
     validate(CROSSBOW_GOBLIN_PATH, (16, 128))
     validate(CROSSBOW_ARROW_PATH, (8, 8))

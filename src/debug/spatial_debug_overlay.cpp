@@ -62,7 +62,8 @@ namespace
     static_assert(stage_map_offset(32, stage1::width) == 6);
     static_assert(stage1_debug_map[(6 * 32) + 6] == blocked_tile_index);
     static_assert(stage1_debug_map[(7 * 32) + 7] == transparent_tile_index);
-    static_assert(stage1_debug_map[(12 * 32) + 13] == blocked_tile_index);
+    // Stage1's rounded rock is a static WorldBox, not a BLOCKED Cell.
+    static_assert(stage1_debug_map[(12 * 32) + 13] == transparent_tile_index);
     static_assert(stage1_debug_map[(25 * 32) + 25] == blocked_tile_index);
 }
 

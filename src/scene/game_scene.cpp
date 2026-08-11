@@ -53,7 +53,8 @@ namespace
     static_assert(goblin_target_ids_are_unique());
     static_assert(GameScene::enemy_count + 1 == SpatialManager::actor_count);
     static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 8 +
-                  CrossbowProjectilePool::capacity == CollisionDebugBoxList::capacity);
+                  CrossbowProjectilePool::capacity + stage1::static_obstacle_count ==
+                  CollisionDebugBoxList::capacity);
 }
 
 GameScene::GameScene() :
@@ -67,7 +68,7 @@ GameScene::GameScene() :
     }},
     _crossbow_goblin(crossbow_goblin_home_position, crossbow_goblin_target_id),
     _spatial_debug_overlay(stage1::data),
-    _spatial_manager(stage1::data)
+    _spatial_manager(stage1::data, stage1::static_obstacles)
 {
     _player.set_visible(false);
     for(Goblin& goblin : _goblins)
@@ -168,6 +169,10 @@ void GameScene::_update_collision_debug_overlay()
     for(int index = 0; index < player_hitboxes.count; ++index)
     {
         boxes.add(player_hitboxes.boxes[index], CollisionDebugBoxType::HITBOX);
+    }
+    for(int index = 0; index < stage1::static_obstacles.count; ++index)
+    {
+        boxes.add(stage1::static_obstacles.boxes[index], CollisionDebugBoxType::STATIC_OBSTACLE);
     }
     for(const Goblin& goblin : _goblins)
     {

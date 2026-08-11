@@ -32,6 +32,8 @@ namespace
         StageCell::WALKABLE, StageCell::WALKABLE
     };
     constexpr StageData spatial_test_stage = { 2, 2, 8, spatial_test_cells };
+    constexpr WorldBox spatial_test_obstacle_boxes[1] = {{ { 0, 0 }, 12, 12 }};
+    constexpr StageStaticObstacleData spatial_test_obstacles = { spatial_test_obstacle_boxes, 1 };
 
     static_assert(stage_world_minimum(spatial_test_stage) == -8);
     static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -8) == 0);
@@ -41,17 +43,24 @@ namespace
     static_assert(stage_cell_from_world_coordinate(spatial_test_stage, 7) == 1);
     static_assert(stage_cell_world_box(spatial_test_stage, 0, 0).center == bn::fixed_point(-4, -4));
     static_assert(stage_cell_world_box(spatial_test_stage, 1, 0).center == bn::fixed_point(4, -4));
+    static_assert(spatial_test_obstacles.count == 1);
+    static_assert(touches_or_intersects({ { 6, 0 }, 8, 8 }, spatial_test_obstacle_boxes[0]));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::PLAYER, true));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, false));
     static_assert(should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true));
 }
 
-SpatialManager::SpatialManager(const StageData& stage) : _stage(stage)
+SpatialManager::SpatialManager(const StageData& stage, const StageStaticObstacleData& static_obstacles) :
+    _stage(stage),
+    _static_obstacles(static_obstacles)
 {
     BN_ASSERT(stage.width > 0);
     BN_ASSERT(stage.height > 0);
     BN_ASSERT(stage.tile_size > 0);
     BN_ASSERT(stage.movement_cells);
+    BN_ASSERT(static_obstacles.count >= 0);
+    BN_ASSERT(static_obstacles.count == 0 || static_obstacles.boxes);
+    BN_ASSERT(static_obstacles.count <= max_stage_object_movement_obstacles);
 }
 
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox)
@@ -92,6 +101,17 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
                 result.boxes[result.count] = cell;
                 ++result.count;
             }
+        }
+    }
+
+    for(int index = 0; index < _static_obstacles.count; ++index)
+    {
+        const WorldBox& obstacle = _static_obstacles.boxes[index];
+        if(touches_or_intersects(movement_area, obstacle))
+        {
+            BN_ASSERT(result.count < max_movement_obstacles);
+            result.boxes[result.count] = obstacle;
+            ++result.count;
         }
     }
 
