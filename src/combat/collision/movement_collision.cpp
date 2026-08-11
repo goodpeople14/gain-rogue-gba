@@ -144,8 +144,42 @@ namespace
                ! overlaps_strictly(world_box(bottom_right, player_pushbox.box), rock);
     }
 
+    [[nodiscard]] constexpr bool rock_inset_tests()
+    {
+        constexpr int rock_visual_size = 16;
+        constexpr int rock_collision_size = 12;
+        constexpr Pushbox player_pushbox = { { 0, 3, 8, 8 } };
+        constexpr WorldBox rock_visual = { { 0, 0 }, rock_visual_size, rock_visual_size };
+        constexpr WorldBox rock_collision = { { 0, 0 }, rock_collision_size, rock_collision_size };
+        constexpr bn::fixed diagonal_step(0.70710678f);
+        WorldBoxList<max_movement_obstacles> obstacles;
+        obstacles.boxes[0] = rock_collision;
+        obstacles.count = 1;
+
+        // The sprite overlaps the rounded visual corner, while the actual
+        // pushbox remains outside the 2px-inset collision box.
+        constexpr bn::fixed_point corner_clearance_start(-11, -11);
+        bn::fixed_point corner_clearance = resolve_movement_unbounded(
+                corner_clearance_start, { diagonal_step, diagonal_step }, player_pushbox, obstacles);
+
+        // Moving one pixel closer reaches the collision box; X is blocked and
+        // the existing dominant-axis tie rule preserves the tangent Y slide.
+        constexpr bn::fixed_point entering_start(-10, -10);
+        bn::fixed_point entering_collision = resolve_movement_unbounded(
+                entering_start, { diagonal_step, diagonal_step }, player_pushbox, obstacles);
+
+        return rock_visual.width - rock_collision.width == 4 &&
+               rock_visual.height - rock_collision.height == 4 &&
+               overlaps_strictly({ corner_clearance_start, rock_visual_size, rock_visual_size }, rock_visual) &&
+               ! overlaps_strictly(world_box(corner_clearance_start, player_pushbox.box), rock_collision) &&
+               corner_clearance == bn::fixed_point(-11 + diagonal_step, -11 + diagonal_step) &&
+               entering_collision == bn::fixed_point(-10, -10 + diagonal_step) &&
+               ! overlaps_strictly(world_box(entering_collision, player_pushbox.box), rock_collision);
+    }
+
     static_assert(movement_collision_tests());
     static_assert(corner_slide_tests());
+    static_assert(rock_inset_tests());
     static_assert(vertical_axis_has_priority({ bn::fixed(0.5), 1 }));
     static_assert(! vertical_axis_has_priority({ 1, 1 }));
 }
