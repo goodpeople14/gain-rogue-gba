@@ -19,6 +19,7 @@
 - 검사 공격 같은 캐릭터 고유 행동은 구체 캐릭터 클래스에 둔다.
 - `GameScene`은 시스템을 조정하되 개별 시스템의 모든 동작을 직접 구현하지 않는다.
 - `Hitbox`, `Hurtbox`, `Pushbox`의 구분을 유지한다.
+- Collision, Pushbox, Hitbox/Hurtbox, Static Obstacle을 변경할 때는 `docs/collision-rules.md`를 따른다.
 - `include/game/direction.h`의 방향 순서를 보존한다. 스프라이트 프레임 인덱스와 방향별 데이터가 이 순서에 의존한다.
 - 게임 객체 모음에는 고정 크기 Butano 컨테이너와 미리 정한 최대 개수를 우선 사용한다. 필요성이 확인되지 않은 동적 할당은 도입하지 않는다.
 
@@ -27,6 +28,7 @@
 - 작업 절차: `docs/workflow.md`
 - 현재 구조: `docs/architecture.md`
 - 전투 구조: `docs/combat-rules.md`
+- 충돌 규칙: `docs/collision-rules.md`
 - 그래픽 규칙: `docs/graphics-rules.md`
 - Sprite palette 정책: `docs/gba-sprite-palette.md`
 - 중요한 설계 결정: `docs/decisions/`
