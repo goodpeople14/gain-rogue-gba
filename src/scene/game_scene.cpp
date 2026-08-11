@@ -25,6 +25,7 @@ namespace
     constexpr int crossbow_goblin_target_id = 14;
     constexpr bool stage1_enemy_respawn_enabled = false;
     constexpr int movement_query_padding = 1;
+    constexpr int intro_frames = 90;
     constexpr int ready_frames = 120;
     constexpr int go_frames = 45;
     constexpr int stage_message_y = 0;
@@ -103,7 +104,7 @@ namespace
         return result;
     }
 
-    constexpr bn::array<bn::tile, 11> stage_glyph_tiles = {
+    constexpr bn::array<bn::tile, 14> stage_glyph_tiles = {
         make_stage_glyph({ 14, 17, 17, 31, 17, 17, 17 }),  // A
         make_stage_glyph({ 30, 17, 17, 17, 17, 17, 30 }),  // D
         make_stage_glyph({ 31, 16, 16, 30, 16, 16, 31 }),  // E
@@ -114,7 +115,10 @@ namespace
         make_stage_glyph({ 31, 4, 4, 4, 4, 4, 4 }),        // T
         make_stage_glyph({ 17, 10, 4, 4, 4, 10, 17 }),     // X
         make_stage_glyph({ 17, 17, 10, 4, 4, 4, 4 }),      // Y
-        make_stage_glyph({ 4, 4, 4, 4, 4, 0, 4 })          // !
+        make_stage_glyph({ 4, 4, 4, 4, 4, 0, 4 }),         // !
+        make_stage_glyph({ 15, 16, 16, 14, 1, 1, 30 }),    // S
+        make_stage_glyph({ 4, 12, 4, 4, 4, 4, 14 }),       // 1
+        make_stage_glyph({ 14, 17, 1, 2, 4, 8, 31 })       // 2
     };
 
     constexpr bn::array<bn::color, 16> stage_glyph_colors = {
@@ -143,6 +147,9 @@ namespace
         case 'X': return 8;
         case 'Y': return 9;
         case '!': return 10;
+        case 'S': return 11;
+        case '1': return 12;
+        case '2': return 13;
         default: return -1;
         }
     }
@@ -159,8 +166,8 @@ namespace
 
     [[nodiscard]] constexpr GameScene::StagePhase stage_phase_after_ticks(int frames)
     {
-        GameScene::StagePhase phase = GameScene::StagePhase::READY;
-        int frames_remaining = ready_frames;
+        GameScene::StagePhase phase = GameScene::StagePhase::INTRO;
+        int frames_remaining = intro_frames;
 
         for(int index = 0; index < frames; ++index)
         {
@@ -170,7 +177,12 @@ namespace
                 continue;
             }
 
-            if(phase == GameScene::StagePhase::READY)
+            if(phase == GameScene::StagePhase::INTRO)
+            {
+                phase = GameScene::StagePhase::READY;
+                frames_remaining = ready_frames;
+            }
+            else if(phase == GameScene::StagePhase::READY)
             {
                 phase = GameScene::StagePhase::GO;
                 frames_remaining = go_frames;
@@ -220,14 +232,19 @@ namespace
     static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 8 +
                   CrossbowProjectilePool::capacity + stage1::static_obstacle_count ==
                   CollisionDebugBoxList::capacity);
-    static_assert(stage_phase_after_ticks(ready_frames - 1) ==
+    static_assert(stage_phase_after_ticks(intro_frames - 1) ==
+                  GameScene::StagePhase::INTRO);
+    static_assert(stage_phase_after_ticks(intro_frames) ==
                   GameScene::StagePhase::READY);
-    static_assert(stage_phase_after_ticks(ready_frames) ==
+    static_assert(stage_phase_after_ticks(intro_frames + ready_frames - 1) ==
+                  GameScene::StagePhase::READY);
+    static_assert(stage_phase_after_ticks(intro_frames + ready_frames) ==
                   GameScene::StagePhase::GO);
-    static_assert(stage_phase_after_ticks(ready_frames + go_frames - 1) ==
+    static_assert(stage_phase_after_ticks(intro_frames + ready_frames + go_frames - 1) ==
                   GameScene::StagePhase::GO);
-    static_assert(stage_phase_after_ticks(ready_frames + go_frames) ==
+    static_assert(stage_phase_after_ticks(intro_frames + ready_frames + go_frames) ==
                   GameScene::StagePhase::PLAYING);
+    static_assert(! phase_runs_gameplay(GameScene::StagePhase::INTRO));
     static_assert(! phase_runs_gameplay(GameScene::StagePhase::READY));
     static_assert(! phase_runs_gameplay(GameScene::StagePhase::GO));
     static_assert(phase_runs_gameplay(GameScene::StagePhase::PLAYING));
@@ -287,8 +304,8 @@ void GameScene::update()
 void GameScene::_start_stage(StageId stage)
 {
     _stage = stage;
-    _stage_phase = StagePhase::READY;
-    _phase_frames_remaining = ready_frames;
+    _stage_phase = StagePhase::INTRO;
+    _phase_frames_remaining = intro_frames;
     _player.apply_movement({ player_start_x, player_start_y }, Direction::DOWN);
     _player.set_visible(true);
 
@@ -316,12 +333,12 @@ void GameScene::_start_stage(StageId stage)
     _collision_debug_overlay.reset();
     _spatial_debug_overlay.reset();
     _sync_spatial_actors();
-    _set_stage_message("READY!", 6, stage_message_y, 16, 2);
+    _set_stage_message(_stage == StageId::STAGE_1 ? "STAGE 1" : "STAGE 2", 7, stage_message_y, 16, 2);
 }
 
 void GameScene::_update_stage_phase()
 {
-    if(_stage_phase != StagePhase::READY && _stage_phase != StagePhase::GO)
+    if(_stage_phase != StagePhase::INTRO && _stage_phase != StagePhase::READY && _stage_phase != StagePhase::GO)
     {
         return;
     }
@@ -332,7 +349,13 @@ void GameScene::_update_stage_phase()
         return;
     }
 
-    if(_stage_phase == StagePhase::READY)
+    if(_stage_phase == StagePhase::INTRO)
+    {
+        _stage_phase = StagePhase::READY;
+        _phase_frames_remaining = ready_frames;
+        _set_stage_message("READY!", 6, stage_message_y, 16, 2);
+    }
+    else if(_stage_phase == StagePhase::READY)
     {
         _stage_phase = StagePhase::GO;
         _phase_frames_remaining = go_frames;

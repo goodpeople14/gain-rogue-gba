@@ -26,6 +26,7 @@ public:
 
     enum class StagePhase
     {
+        INTRO,
         READY,
         GO,
         PLAYING,
@@ -71,7 +72,7 @@ private:
     SpatialManager _spatial_manager;
     bn::vector<bn::sprite_ptr, 6> _stage_message_sprites;
     StageId _stage = StageId::STAGE_1;
-    StagePhase _stage_phase = StagePhase::READY;
+    StagePhase _stage_phase = StagePhase::INTRO;
     int _phase_frames_remaining = 0;
 };
 
