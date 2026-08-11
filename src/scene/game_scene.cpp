@@ -170,9 +170,10 @@ void GameScene::_update_collision_debug_overlay()
     {
         boxes.add(player_hitboxes.boxes[index], CollisionDebugBoxType::HITBOX);
     }
-    for(int index = 0; index < stage1::static_obstacles.count; ++index)
+    const StageStaticObstacleData& static_obstacles = _spatial_manager.static_obstacles();
+    for(int index = 0; index < static_obstacles.count; ++index)
     {
-        boxes.add(stage1::static_obstacles.boxes[index], CollisionDebugBoxType::STATIC_OBSTACLE);
+        boxes.add(static_obstacles.boxes[index], CollisionDebugBoxType::STATIC_OBSTACLE);
     }
     for(const Goblin& goblin : _goblins)
     {

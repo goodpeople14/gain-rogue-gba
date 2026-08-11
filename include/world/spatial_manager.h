@@ -29,6 +29,8 @@ public:
     void update_actor(SpatialActorId actor_id, const WorldBox& pushbox);
     void set_actor_active(SpatialActorId actor_id, bool active);
 
+    [[nodiscard]] const StageStaticObstacleData& static_obstacles() const;
+
     [[nodiscard]] WorldBoxList<max_movement_obstacles> movement_obstacles(
             SpatialActorId actor_id, const WorldBox& movement_area) const;
 

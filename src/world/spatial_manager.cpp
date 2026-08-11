@@ -80,6 +80,11 @@ void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
     _actors[actor_index(actor_id)].active = active;
 }
 
+const StageStaticObstacleData& SpatialManager::static_obstacles() const
+{
+    return _static_obstacles;
+}
+
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         SpatialActorId actor_id, const WorldBox& movement_area) const
 {
