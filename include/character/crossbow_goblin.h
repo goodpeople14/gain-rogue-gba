@@ -21,6 +21,7 @@ public:
     CrossbowGoblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
+    void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                 CrossbowProjectilePool& projectiles);
@@ -73,6 +74,7 @@ private:
     int _status_icon_timer = 0;
     int _respawn_timer = 0;
     bool _respawning = false;
+    bool _respawn_enabled = true;
     bool _active = true;
 };
 

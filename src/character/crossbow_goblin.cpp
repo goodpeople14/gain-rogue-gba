@@ -210,10 +210,20 @@ void CrossbowGoblin::enter()
     _set_telegraph_visible(false); apply_movement(_home_position, Direction::DOWN); set_visible(true);
 }
 
+void CrossbowGoblin::set_respawn_enabled(bool enabled)
+{
+    _respawn_enabled = enabled;
+    if(! _respawn_enabled)
+    {
+        _respawning = false;
+        _respawn_timer = 0;
+    }
+}
+
 void CrossbowGoblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
                              const WorldBoxList<max_movement_obstacles>& blockers, CrossbowProjectilePool& projectiles)
 {
-    if(! _active) { _update_respawn(blockers); return; }
+    if(! _active) { if(_respawn_enabled) _update_respawn(blockers); return; }
     _update_timed_status_icon();
     switch(_state)
     {
@@ -320,8 +330,9 @@ void CrossbowGoblin::_start_attack(Direction direction)
 
 void CrossbowGoblin::_die()
 {
-    _status_icon_timer = 0; _set_telegraph_visible(false); _state = State::DEAD; _respawn_timer = respawn_delay_ticks;
-    _respawning = true; _active = false; set_visible(false);
+    _status_icon_timer = 0; _set_telegraph_visible(false); _state = State::DEAD;
+    _respawn_timer = _respawn_enabled ? respawn_delay_ticks : 0;
+    _respawning = _respawn_enabled; _active = false; set_visible(false);
 }
 
 void CrossbowGoblin::_update_respawn(const WorldBoxList<max_movement_obstacles>& blockers)

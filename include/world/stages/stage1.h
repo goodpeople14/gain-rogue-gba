@@ -126,6 +126,10 @@ namespace stage1
     };
     constexpr StageStaticObstacleData static_obstacles = { static_obstacle_boxes, static_obstacle_count };
 
+    // The exit is a passable trigger zone near the top center of the stage;
+    // it deliberately does not participate in movement collision.
+    constexpr WorldBox exit_box = { { 0, -64 }, 24, 8 };
+
     static_assert(width * height == 400);
     static_assert(stage_cell_at(data, 0, 0) == StageCell::BLOCKED);
     static_assert(stage_cell_at(data, width - 1, height - 1) == StageCell::BLOCKED);
@@ -138,6 +142,7 @@ namespace stage1
                   static_obstacle_boxes[0].height == rock_collision_size);
     static_assert((rock_visual_size - static_obstacle_boxes[0].width) / 2 == rock_collision_inset);
     static_assert((rock_visual_size - static_obstacle_boxes[0].height) / 2 == rock_collision_inset);
+    static_assert(exit_box.center.x() == 0 && exit_box.center.y() == -64);
     static_assert(stage_cell_from_world_coordinate(data, -80) == 0);
     static_assert(stage_cell_from_world_coordinate(data, -81) == -1);
     static_assert(stage_cell_from_world_coordinate(data, 79) == 19);
