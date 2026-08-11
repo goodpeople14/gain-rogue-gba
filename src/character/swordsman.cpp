@@ -5,10 +5,14 @@
 namespace
 {
     constexpr bn::fixed swordsman_movement_speed(1);
+    constexpr Pushbox swordsman_body_pushbox = { { 0, 1, 8, 8 } };
     constexpr CollisionBody swordsman_collision_body = {
         { { 0, 0, 10, 10 } },
-        { { 0, 3, 8, 8 } }
+        swordsman_body_pushbox
     };
+
+    static_assert(swordsman_body_pushbox.box.offset_y == 1);
+    static_assert(swordsman_body_pushbox.box.width == 8 && swordsman_body_pushbox.box.height == 8);
 }
 
 Swordsman::Swordsman(const bn::fixed_point& initial_position) :

@@ -226,6 +226,59 @@ namespace
                rock_collision_candidate_passes(8) ? 8 : 0;
     }
 
+    [[nodiscard]] constexpr bool character_body_pushbox_tests()
+    {
+        constexpr Pushbox player_body = { { 0, 1, 8, 8 } };
+        constexpr Pushbox goblin_body = { { 0, 3, 6, 6 } };
+        constexpr int sprite_size = 16;
+        constexpr bn::fixed_point player_position(0, 0);
+        constexpr bn::fixed_point head_only_goblin_position(0, -12);
+        constexpr bn::fixed_point feet_only_goblin_position(0, 12);
+        constexpr bn::fixed_point side_only_goblin_position(11, 0);
+        constexpr bn::fixed_point body_goblin_position(5, 0);
+        constexpr WorldBox player_visual = { player_position, sprite_size, sprite_size };
+        constexpr WorldBox player_pushbox = world_box(player_position, player_body.box);
+
+        WorldBoxList<max_movement_obstacles> head_only_obstacles;
+        head_only_obstacles.boxes[0] = world_box(head_only_goblin_position, goblin_body.box);
+        head_only_obstacles.count = 1;
+        WorldBoxList<max_movement_obstacles> feet_only_obstacles;
+        feet_only_obstacles.boxes[0] = world_box(feet_only_goblin_position, goblin_body.box);
+        feet_only_obstacles.count = 1;
+        WorldBoxList<max_movement_obstacles> side_only_obstacles;
+        side_only_obstacles.boxes[0] = world_box(side_only_goblin_position, goblin_body.box);
+        side_only_obstacles.count = 1;
+        WorldBoxList<max_movement_obstacles> body_obstacles;
+        body_obstacles.boxes[0] = world_box(body_goblin_position, goblin_body.box);
+        body_obstacles.count = 1;
+        WorldBoxList<max_movement_obstacles> goblin_body_obstacles;
+        goblin_body_obstacles.boxes[0] = world_box({ 6, 0 }, goblin_body.box);
+        goblin_body_obstacles.count = 1;
+
+        bn::fixed_point head_only_move = resolve_movement_unbounded(
+                player_position, { 1, 0 }, player_body, head_only_obstacles);
+        bn::fixed_point feet_only_move = resolve_movement_unbounded(
+                player_position, { 1, 0 }, player_body, feet_only_obstacles);
+        bn::fixed_point side_only_move = resolve_movement_unbounded(
+                player_position, { 1, 0 }, player_body, side_only_obstacles);
+        bn::fixed_point body_move = resolve_movement_unbounded(
+                player_position, { 1, 0 }, player_body, body_obstacles);
+        bn::fixed_point goblin_body_move = resolve_movement_unbounded(
+                player_position, { 1, 0 }, goblin_body, goblin_body_obstacles);
+
+        return overlaps_strictly(player_visual, { head_only_goblin_position, sprite_size, sprite_size }) &&
+               overlaps_strictly(player_visual, { feet_only_goblin_position, sprite_size, sprite_size }) &&
+               overlaps_strictly(player_visual, { side_only_goblin_position, sprite_size, sprite_size }) &&
+               ! overlaps_strictly(player_pushbox, head_only_obstacles.boxes[0]) &&
+               ! overlaps_strictly(player_pushbox, feet_only_obstacles.boxes[0]) &&
+               ! overlaps_strictly(player_pushbox, side_only_obstacles.boxes[0]) &&
+               head_only_move == bn::fixed_point(1, 0) &&
+               feet_only_move == bn::fixed_point(1, 0) &&
+               side_only_move == bn::fixed_point(1, 0) &&
+               body_move == player_position &&
+               goblin_body_move == player_position;
+    }
+
     static_assert(movement_collision_tests());
     static_assert(corner_slide_tests());
     static_assert(rock_inset_tests());
@@ -234,6 +287,7 @@ namespace
     static_assert(rock_collision_candidate_passes(8));
     static_assert(largest_passing_rock_collision_size() == 10);
     static_assert(stage1::rock_collision_size == largest_passing_rock_collision_size());
+    static_assert(character_body_pushbox_tests());
     static_assert(vertical_axis_has_priority({ bn::fixed(0.5), 1 }));
     static_assert(! vertical_axis_has_priority({ 1, 1 }));
 }
