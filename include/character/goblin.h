@@ -32,6 +32,7 @@ public:
     Goblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
+    void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
@@ -127,6 +128,7 @@ private:
     StatusIcon _status_icon = StatusIcon::NONE;
     int _respawn_timer = 0;
     bool _respawning = false;
+    bool _respawn_enabled = true;
     bool _active = true;
 };
 

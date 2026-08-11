@@ -318,12 +318,25 @@ void Goblin::enter()
     set_visible(true);
 }
 
+void Goblin::set_respawn_enabled(bool enabled)
+{
+    _respawn_enabled = enabled;
+    if(! _respawn_enabled)
+    {
+        _respawning = false;
+        _respawn_timer = 0;
+    }
+}
+
 void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
                     const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! _active)
     {
-        _update_respawn(blocking_pushboxes);
+        if(_respawn_enabled)
+        {
+            _update_respawn(blocking_pushboxes);
+        }
         return;
     }
 
@@ -580,9 +593,9 @@ void Goblin::_die()
     _set_telegraph_visible(false);
     _state = State::DEAD;
     _state_timer = 0;
-    _respawn_timer = respawn_delay_ticks;
+    _respawn_timer = _respawn_enabled ? respawn_delay_ticks : 0;
     _reset_local_avoidance();
-    _respawning = true;
+    _respawning = _respawn_enabled;
     _active = false;
     set_visible(false);
 }
