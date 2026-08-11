@@ -4,7 +4,7 @@
 
 namespace
 {
-    [[nodiscard]] bn::fixed clamp_position(bn::fixed position, int minimum, int maximum)
+    [[nodiscard]] constexpr bn::fixed clamp_position(bn::fixed position, int minimum, int maximum)
     {
         if(position < minimum)
         {
@@ -49,6 +49,48 @@ namespace
         return true;
     }
 
+    [[nodiscard]] constexpr bn::fixed_point resolve_horizontal_axis(
+            const bn::fixed_point& current_position, const bn::fixed_point& delta,
+            const Pushbox& moving_pushbox, const WorldBoxList<max_movement_obstacles>& obstacles)
+    {
+        WorldBox current_box = world_box(current_position, moving_pushbox.box);
+        bn::fixed_point candidate(current_position.x() + delta.x(), current_position.y());
+        WorldBox candidate_box = world_box(candidate, moving_pushbox.box);
+        return axis_move_allowed(current_box, candidate_box, obstacles, true) ? candidate : current_position;
+    }
+
+    [[nodiscard]] constexpr bn::fixed_point resolve_vertical_axis(
+            const bn::fixed_point& current_position, const bn::fixed_point& delta,
+            const Pushbox& moving_pushbox, const WorldBoxList<max_movement_obstacles>& obstacles)
+    {
+        WorldBox current_box = world_box(current_position, moving_pushbox.box);
+        bn::fixed_point candidate(current_position.x(), current_position.y() + delta.y());
+        WorldBox candidate_box = world_box(candidate, moving_pushbox.box);
+        return axis_move_allowed(current_box, candidate_box, obstacles, false) ? candidate : current_position;
+    }
+
+    [[nodiscard]] constexpr bool vertical_axis_has_priority(const bn::fixed_point& delta)
+    {
+        return collision_absolute(delta.y()) > collision_absolute(delta.x());
+    }
+
+    [[nodiscard]] constexpr bn::fixed_point resolve_movement_unbounded(
+            const bn::fixed_point& current_position, const bn::fixed_point& delta,
+            const Pushbox& moving_pushbox, const WorldBoxList<max_movement_obstacles>& obstacles)
+    {
+        // At an exact corner, either tangent axis can be clear on its own but
+        // both cannot advance together. Preserve the larger intended movement
+        // component, falling back to the existing X-first rule on ties.
+        if(vertical_axis_has_priority(delta))
+        {
+            bn::fixed_point result = resolve_vertical_axis(current_position, delta, moving_pushbox, obstacles);
+            return resolve_horizontal_axis(result, delta, moving_pushbox, obstacles);
+        }
+
+        bn::fixed_point result = resolve_horizontal_axis(current_position, delta, moving_pushbox, obstacles);
+        return resolve_vertical_axis(result, delta, moving_pushbox, obstacles);
+    }
+
     [[nodiscard]] constexpr bool movement_collision_tests()
     {
         WorldBoxList<max_movement_obstacles> obstacles;
@@ -67,31 +109,52 @@ namespace
                ! axis_move_allowed(overlapping, more_overlapping, obstacles, false);
     }
 
+    [[nodiscard]] constexpr bool corner_slide_tests()
+    {
+        constexpr Pushbox player_pushbox = { { 0, 3, 8, 8 } };
+        constexpr WorldBox rock = { { 0, 0 }, 12, 12 };
+        WorldBoxList<max_movement_obstacles> obstacles;
+        obstacles.boxes[0] = rock;
+        obstacles.count = 1;
+
+        bn::fixed_point top_left = resolve_movement_unbounded(
+                { -10, -13 }, { bn::fixed(0.5), 1 }, player_pushbox, obstacles);
+        bn::fixed_point top_right = resolve_movement_unbounded(
+                { 10, -13 }, { bn::fixed(-0.5), 1 }, player_pushbox, obstacles);
+        bn::fixed_point bottom_left = resolve_movement_unbounded(
+                { -10, 7 }, { bn::fixed(0.5), -1 }, player_pushbox, obstacles);
+        bn::fixed_point bottom_right = resolve_movement_unbounded(
+                { 10, 7 }, { bn::fixed(-0.5), -1 }, player_pushbox, obstacles);
+        bn::fixed_point front = resolve_movement_unbounded({ -10, -3 }, { 1, 0 }, player_pushbox, obstacles);
+        bn::fixed_point vertical_tangent = resolve_movement_unbounded(
+                { -10, -3 }, { 0, 1 }, player_pushbox, obstacles);
+        bn::fixed_point horizontal_tangent = resolve_movement_unbounded(
+                { 0, -13 }, { 1, 0 }, player_pushbox, obstacles);
+        bn::fixed_point free_diagonal = resolve_movement_unbounded(
+                { -30, -3 }, { bn::fixed(0.5), 1 }, player_pushbox, obstacles);
+
+        return top_left == bn::fixed_point(-10, -12) && top_right == bn::fixed_point(10, -12) &&
+               bottom_left == bn::fixed_point(-10, 6) && bottom_right == bn::fixed_point(10, 6) &&
+               front == bn::fixed_point(-10, -3) && vertical_tangent == bn::fixed_point(-10, -2) &&
+               horizontal_tangent == bn::fixed_point(1, -13) &&
+               free_diagonal == bn::fixed_point(bn::fixed(-29.5), -2) &&
+               ! overlaps_strictly(world_box(top_left, player_pushbox.box), rock) &&
+               ! overlaps_strictly(world_box(top_right, player_pushbox.box), rock) &&
+               ! overlaps_strictly(world_box(bottom_left, player_pushbox.box), rock) &&
+               ! overlaps_strictly(world_box(bottom_right, player_pushbox.box), rock);
+    }
+
     static_assert(movement_collision_tests());
+    static_assert(corner_slide_tests());
+    static_assert(vertical_axis_has_priority({ bn::fixed(0.5), 1 }));
+    static_assert(! vertical_axis_has_priority({ 1, 1 }));
 }
 
 bn::fixed_point resolve_movement(const bn::fixed_point& current_position, const bn::fixed_point& delta,
                                  const Pushbox& moving_pushbox, const WorldBoxList<max_movement_obstacles>& obstacles,
                                  const MovementBounds& bounds)
 {
-    bn::fixed_point result = current_position;
-    WorldBox current_box = world_box(result, moving_pushbox.box);
-    bn::fixed_point x_candidate(result.x() + delta.x(), result.y());
-    WorldBox x_candidate_box = world_box(x_candidate, moving_pushbox.box);
-
-    if(axis_move_allowed(current_box, x_candidate_box, obstacles, true))
-    {
-        result.set_x(x_candidate.x());
-    }
-
-    current_box = world_box(result, moving_pushbox.box);
-    bn::fixed_point y_candidate(result.x(), result.y() + delta.y());
-    WorldBox y_candidate_box = world_box(y_candidate, moving_pushbox.box);
-
-    if(axis_move_allowed(current_box, y_candidate_box, obstacles, false))
-    {
-        result.set_y(y_candidate.y());
-    }
+    bn::fixed_point result = resolve_movement_unbounded(current_position, delta, moving_pushbox, obstacles);
 
     result.set_x(clamp_position(result.x(), bounds.min_x, bounds.max_x));
     result.set_y(clamp_position(result.y(), bounds.min_y, bounds.max_y));
