@@ -65,16 +65,16 @@ DIRT_CELLS = dirt_cells()
 def grass_tile(variant: int, boundary: bool) -> Image.Image:
     image = indexed_image((TILE_SIZE, TILE_SIZE))
     draw = ImageDraw.Draw(image)
-    draw.rectangle((0, 0, 7, 7), fill=4)
+    draw.rectangle((0, 0, 7, 7), fill=3 if boundary else 4)
 
     patterns = (
         ((1, 1), (6, 2), (3, 5), (7, 6)),
         ((2, 0), (5, 3), (0, 5), (6, 7)),
         ((0, 2), (4, 1), (7, 4), (2, 7)),
     )
-    for x, y in patterns[variant % len(patterns)]:
-        draw.point((x, y), fill=3)
-        if x < 7 and y < 7 and (x + y + variant) % 2 == 0:
+    for x, y in patterns[variant % len(patterns)][:2 if boundary else 3]:
+        draw.point((x, y), fill=4 if boundary else 3)
+        if not boundary and x < 7 and y < 7 and (x + y + variant) % 2 == 0:
             draw.point((x + 1, y), fill=5)
 
     if variant == 2:
@@ -84,8 +84,6 @@ def grass_tile(variant: int, boundary: bool) -> Image.Image:
         draw.point((5, 6), fill=5)
 
     if boundary:
-        draw.line(((0, 0), (7, 0)), fill=3)
-        draw.line(((0, 7), (7, 7)), fill=3)
         draw.point((1, 1), fill=5)
         draw.point((6, 6), fill=5)
     return image
@@ -172,8 +170,6 @@ def panel_tile(image: Image.Image, column: int, row: int) -> None:
     x = column * TILE_SIZE
     y = row * TILE_SIZE
     draw.rectangle((x, y, x + 7, y + 7), fill=1)
-    draw.line(((x + 1, y + 1), (x + 6, y + 1)), fill=2)
-    draw.point((x + 2, y + 5), fill=2)
 
 
 def paste_stage_tile(image: Image.Image, tile: Image.Image, column: int, row: int) -> None:
