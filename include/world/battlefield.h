@@ -14,6 +14,7 @@ struct MovementBounds
 class Battlefield
 {
 public:
+    enum class StageVisual { STAGE_1, STAGE_2 };
     static constexpr int screen_width = 240;
     static constexpr int screen_height = 160;
     static constexpr int ui_panel_width = 40;
@@ -23,6 +24,7 @@ public:
     Battlefield();
 
     void set_visible(bool visible);
+    void set_stage(StageVisual stage);
 
     [[nodiscard]] static constexpr MovementBounds movement_bounds(int character_width, int character_height)
     {
@@ -38,7 +40,9 @@ public:
     }
 
 private:
-    bn::regular_bg_ptr _background;
+    bn::regular_bg_ptr _stage1_background;
+    bn::regular_bg_ptr _stage2_background;
+    StageVisual _stage = StageVisual::STAGE_1;
 };
 
 #endif

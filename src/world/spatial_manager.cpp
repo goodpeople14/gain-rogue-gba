@@ -51,8 +51,13 @@ namespace
 }
 
 SpatialManager::SpatialManager(const StageData& stage, const StageStaticObstacleData& static_obstacles) :
-    _stage(stage),
-    _static_obstacles(static_obstacles)
+    _stage(&stage),
+    _static_obstacles(&static_obstacles)
+{
+    set_stage(stage, static_obstacles);
+}
+
+void SpatialManager::set_stage(const StageData& stage, const StageStaticObstacleData& static_obstacles)
 {
     BN_ASSERT(stage.width > 0);
     BN_ASSERT(stage.height > 0);
@@ -61,6 +66,8 @@ SpatialManager::SpatialManager(const StageData& stage, const StageStaticObstacle
     BN_ASSERT(static_obstacles.count >= 0);
     BN_ASSERT(static_obstacles.count == 0 || static_obstacles.boxes);
     BN_ASSERT(static_obstacles.count <= max_stage_object_movement_obstacles);
+    _stage = &stage;
+    _static_obstacles = &static_obstacles;
 }
 
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox)
@@ -82,7 +89,7 @@ void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
 
 const StageStaticObstacleData& SpatialManager::static_obstacles() const
 {
-    return _static_obstacles;
+    return *_static_obstacles;
 }
 
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
@@ -90,16 +97,18 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
 {
     WorldBoxList<max_movement_obstacles> result;
 
-    for(int cell_y = 0; cell_y < _stage.height; ++cell_y)
+    const StageData& stage = *_stage;
+    const StageStaticObstacleData& static_obstacles = *_static_obstacles;
+    for(int cell_y = 0; cell_y < stage.height; ++cell_y)
     {
-        for(int cell_x = 0; cell_x < _stage.width; ++cell_x)
+        for(int cell_x = 0; cell_x < stage.width; ++cell_x)
         {
-            if(stage_cell_at(_stage, cell_x, cell_y) != StageCell::BLOCKED)
+            if(stage_cell_at(stage, cell_x, cell_y) != StageCell::BLOCKED)
             {
                 continue;
             }
 
-            WorldBox cell = stage_cell_world_box(_stage, cell_x, cell_y);
+            WorldBox cell = stage_cell_world_box(stage, cell_x, cell_y);
             if(touches_or_intersects(movement_area, cell))
             {
                 BN_ASSERT(result.count < max_movement_obstacles);
@@ -109,9 +118,9 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         }
     }
 
-    for(int index = 0; index < _static_obstacles.count; ++index)
+    for(int index = 0; index < static_obstacles.count; ++index)
     {
-        const WorldBox& obstacle = _static_obstacles.boxes[index];
+        const WorldBox& obstacle = static_obstacles.boxes[index];
         if(touches_or_intersects(movement_area, obstacle))
         {
             BN_ASSERT(result.count < max_movement_obstacles);

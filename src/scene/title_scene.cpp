@@ -94,6 +94,12 @@ namespace
 
 TitleScene::TitleScene()
 {
+    show();
+}
+
+void TitleScene::show()
+{
+    _sprites.clear();
     add_text("GAIN ROGUE", -63, -24, 14, 2, _sprites);
     add_text("PRESS START", -40, 28, 8, 1, _sprites);
 }

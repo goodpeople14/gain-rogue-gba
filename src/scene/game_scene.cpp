@@ -10,6 +10,7 @@
 #include "combat/collision/movement_collision.h"
 #include "combat/collision/collision_math.h"
 #include "world/stages/stage1.h"
+#include "world/stages/stage2.h"
 
 namespace
 {
@@ -23,11 +24,13 @@ namespace
     constexpr bn::array<int, GameScene::goblin_count> goblin_target_ids = {{ 10, 11, 12, 13 }};
     constexpr bn::fixed_point crossbow_goblin_home_position(0, -48);
     constexpr int crossbow_goblin_target_id = 14;
-    constexpr bool stage1_enemy_respawn_enabled = false;
+    constexpr bool stage_enemy_respawn_enabled = false;
     constexpr int movement_query_padding = 1;
     constexpr int intro_frames = 90;
     constexpr int ready_frames = 120;
     constexpr int go_frames = 45;
+    constexpr int congratulations_frames = 120;
+    constexpr int game_over_frames = 120;
     constexpr int stage_message_y = 0;
     constexpr int exit_message_y = -65;
     constexpr bn::array<SpatialActorId, GameScene::goblin_count> goblin_spatial_actor_ids = {{
@@ -104,7 +107,7 @@ namespace
         return result;
     }
 
-    constexpr bn::array<bn::tile, 14> stage_glyph_tiles = {
+    constexpr bn::array<bn::tile, 19> stage_glyph_tiles = {
         make_stage_glyph({ 14, 17, 17, 31, 17, 17, 17 }),  // A
         make_stage_glyph({ 30, 17, 17, 17, 17, 17, 30 }),  // D
         make_stage_glyph({ 31, 16, 16, 30, 16, 16, 31 }),  // E
@@ -118,7 +121,12 @@ namespace
         make_stage_glyph({ 4, 4, 4, 4, 4, 0, 4 }),         // !
         make_stage_glyph({ 15, 16, 16, 14, 1, 1, 30 }),    // S
         make_stage_glyph({ 4, 12, 4, 4, 4, 4, 14 }),       // 1
-        make_stage_glyph({ 14, 17, 1, 2, 4, 8, 31 })       // 2
+        make_stage_glyph({ 14, 17, 1, 2, 4, 8, 31 }),      // 2
+        make_stage_glyph({ 15, 16, 16, 16, 16, 16, 15 }),  // C
+        make_stage_glyph({ 16, 16, 16, 16, 16, 16, 31 }),  // L
+        make_stage_glyph({ 17, 27, 21, 17, 17, 17, 17 }),  // M
+        make_stage_glyph({ 17, 25, 21, 19, 17, 17, 17 }),  // N
+        make_stage_glyph({ 17, 17, 17, 17, 17, 17, 14 })   // U
     };
 
     constexpr bn::array<bn::color, 16> stage_glyph_colors = {
@@ -150,6 +158,11 @@ namespace
         case 'S': return 11;
         case '1': return 12;
         case '2': return 13;
+        case 'C': return 14;
+        case 'L': return 15;
+        case 'M': return 16;
+        case 'N': return 17;
+        case 'U': return 18;
         default: return -1;
         }
     }
@@ -228,7 +241,7 @@ namespace
     static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[2]));
     static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[3]));
     static_assert(stage1_spawns_are_separated());
-    static_assert(! stage1_enemy_respawn_enabled);
+    static_assert(! stage_enemy_respawn_enabled);
     static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 8 +
                   CrossbowProjectilePool::capacity + stage1::static_obstacle_count ==
                   CollisionDebugBoxList::capacity);
@@ -279,8 +292,27 @@ void GameScene::enter()
     _start_stage(StageId::STAGE_1);
 }
 
-void GameScene::update()
+bool GameScene::update()
 {
+    if(_stage_phase == StagePhase::CONGRATULATIONS || _stage_phase == StagePhase::GAME_OVER)
+    {
+        if(--_phase_frames_remaining == 0)
+        {
+            if(_stage_phase == StagePhase::CONGRATULATIONS)
+            {
+                _stage_phase = StagePhase::GAME_OVER;
+                _phase_frames_remaining = game_over_frames;
+                _set_stage_message("GAME OVER", 9, stage_message_y, 12, 1);
+            }
+            else
+            {
+                _clear_stage_message();
+                return true;
+            }
+        }
+        return false;
+    }
+
     _update_stage_phase();
 
     if(_stage_phase == StagePhase::PLAYING)
@@ -299,34 +331,39 @@ void GameScene::update()
     }
 
     _update_collision_debug_overlay();
+    return false;
 }
 
 void GameScene::_start_stage(StageId stage)
 {
     _stage = stage;
+    _battlefield.set_stage(_stage == StageId::STAGE_1 ? Battlefield::StageVisual::STAGE_1 :
+                           Battlefield::StageVisual::STAGE_2);
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
-    _player.apply_movement({ player_start_x, player_start_y }, Direction::DOWN);
+    const StageData& stage_data = _stage == StageId::STAGE_1 ? stage1::data : stage2::data;
+    const StageStaticObstacleData& static_obstacles =
+            _stage == StageId::STAGE_1 ? stage1::static_obstacles : stage2::static_obstacles;
+    bn::fixed_point player_spawn = _stage == StageId::STAGE_1 ?
+            bn::fixed_point(player_start_x, player_start_y) : stage2::player_spawn;
+    _spatial_manager.set_stage(stage_data, static_obstacles);
+    _spatial_debug_overlay.set_stage(stage_data);
+    _player.apply_movement(player_spawn, Direction::DOWN);
     _player.set_visible(true);
 
-    if(_stage == StageId::STAGE_1)
+    for(int index = 0; index < goblin_count; ++index)
     {
-        for(Goblin& goblin : _goblins)
-        {
-            goblin.set_respawn_enabled(stage1_enemy_respawn_enabled);
-            goblin.enter();
-        }
-        _crossbow_goblin.set_respawn_enabled(stage1_enemy_respawn_enabled);
-        _crossbow_goblin.enter();
+        const bn::fixed_point& spawn = _stage == StageId::STAGE_1 ? goblin_home_positions[index] :
+                stage2::goblin_spawns[index];
+        Goblin& goblin = _goblins[index];
+        goblin.set_home_position(spawn);
+        goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+        goblin.enter();
     }
-    else
-    {
-        for(Goblin& goblin : _goblins)
-        {
-            goblin.set_visible(false);
-        }
-        _crossbow_goblin.set_visible(false);
-    }
+    _crossbow_goblin.set_home_position(_stage == StageId::STAGE_1 ? crossbow_goblin_home_position :
+                                       stage2::crossbow_spawn);
+    _crossbow_goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+    _crossbow_goblin.enter();
 
     _crossbow_projectiles.clear();
     _hit_effects.clear();
@@ -425,7 +462,7 @@ void GameScene::_update_playing()
     _sync_spatial_actors();
     _hit_effects.update();
 
-    if(_all_stage1_enemies_defeated())
+    if(_all_stage_enemies_defeated())
     {
         _stage_phase = StagePhase::CLEARED;
         _set_stage_message("EXIT", 4, exit_message_y, 8, 1);
@@ -438,9 +475,19 @@ void GameScene::_update_cleared()
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    if(touches_or_intersects(player_pushbox, stage1::exit_box))
+    const WorldBox& exit_box = _stage == StageId::STAGE_1 ? stage1::exit_box : stage2::exit_box;
+    if(touches_or_intersects(player_pushbox, exit_box))
     {
-        _start_stage(StageId::STAGE_2);
+        if(_stage == StageId::STAGE_1)
+        {
+            _start_stage(StageId::STAGE_2);
+        }
+        else
+        {
+            _stage_phase = StagePhase::CONGRATULATIONS;
+            _phase_frames_remaining = congratulations_frames;
+            _set_stage_message("CONGRATULATIONS!", 16, stage_message_y, 8, 1);
+        }
     }
 }
 
@@ -498,16 +545,11 @@ void GameScene::_clear_stage_message()
 
 bool GameScene::_stage_has_enemies() const
 {
-    return _stage == StageId::STAGE_1;
+    return true;
 }
 
-bool GameScene::_all_stage1_enemies_defeated() const
+bool GameScene::_all_stage_enemies_defeated() const
 {
-    if(_stage != StageId::STAGE_1)
-    {
-        return false;
-    }
-
     for(const Goblin& goblin : _goblins)
     {
         if(goblin.active())

@@ -13,6 +13,7 @@ class SpatialDebugOverlay
 public:
     explicit SpatialDebugOverlay(const StageData& stage);
 
+    void set_stage(const StageData& stage);
     void reset();
     void set_visible(bool visible);
 
@@ -22,7 +23,7 @@ private:
     static constexpr int map_width = 32;
     static constexpr int map_height = 32;
 
-    const StageData& _stage;
+    const StageData* _stage;
     bn::array<bn::regular_bg_map_cell, map_width * map_height> _map_cells = {};
     bn::optional<bn::regular_bg_ptr> _background;
 };

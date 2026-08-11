@@ -26,6 +26,10 @@ void Game::update()
     }
     else
     {
-        _game_scene.update();
+        if(_game_scene.update())
+        {
+            _title_scene.show();
+            _state = GameState::TITLE;
+        }
     }
 }

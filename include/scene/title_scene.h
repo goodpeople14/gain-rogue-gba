@@ -11,6 +11,7 @@ public:
 
     [[nodiscard]] bool update() const;
     void hide();
+    void show();
 
 private:
     bn::vector<bn::sprite_ptr, 32> _sprites;
