@@ -26,6 +26,39 @@ namespace
         };
     }
 
+    struct StageCellRange
+    {
+        int min_x;
+        int max_x;
+        int min_y;
+        int max_y;
+    };
+
+    [[nodiscard]] constexpr StageCellRange stage_cell_range(const StageData& stage, const WorldBox& area)
+    {
+        const int world_minimum = stage_world_minimum(stage);
+        const bn::fixed min_x_world = area.center.x() - bn::fixed(area.width) / 2;
+        const bn::fixed max_x_world = area.center.x() + bn::fixed(area.width) / 2;
+        const bn::fixed min_y_world = area.center.y() - bn::fixed(area.height) / 2;
+        const bn::fixed max_y_world = area.center.y() + bn::fixed(area.height) / 2;
+        const int min_x = ((min_x_world - world_minimum) / stage.tile_size).ceil_integer() - 1;
+        const int max_x = ((max_x_world - world_minimum) / stage.tile_size).floor_integer();
+        const int min_y = ((min_y_world - world_minimum) / stage.tile_size).ceil_integer() - 1;
+        const int max_y = ((max_y_world - world_minimum) / stage.tile_size).floor_integer();
+
+        return {
+            min_x < 0 ? 0 : min_x,
+            max_x >= stage.width ? stage.width - 1 : max_x,
+            min_y < 0 ? 0 : min_y,
+            max_y >= stage.height ? stage.height - 1 : max_y
+        };
+    }
+
+    [[nodiscard]] constexpr bool has_stage_cells(const StageCellRange& range)
+    {
+        return range.min_x <= range.max_x && range.min_y <= range.max_y;
+    }
+
     [[nodiscard]] constexpr bool should_include_actor(SpatialActorId requesting_actor, SpatialActorId candidate_actor,
                                                        bool candidate_active, SpatialLayer requesting_layer,
                                                        SpatialLayer candidate_layer)
@@ -34,22 +67,78 @@ namespace
                same_spatial_layer(requesting_layer, candidate_layer);
     }
 
-    constexpr StageCell spatial_test_cells[4] = {
-        StageCell::WALKABLE, StageCell::BLOCKED,
-        StageCell::WALKABLE, StageCell::WALKABLE
+    constexpr StageCell spatial_test_cells[16] = {
+        StageCell::WALKABLE, StageCell::BLOCKED,  StageCell::WALKABLE, StageCell::BLOCKED,
+        StageCell::BLOCKED,  StageCell::WALKABLE, StageCell::BLOCKED,  StageCell::WALKABLE,
+        StageCell::WALKABLE, StageCell::BLOCKED,  StageCell::WALKABLE, StageCell::BLOCKED,
+        StageCell::BLOCKED,  StageCell::WALKABLE, StageCell::BLOCKED,  StageCell::WALKABLE
     };
-    constexpr StageData spatial_test_stage = { 2, 2, 8, spatial_test_cells };
+    constexpr StageData spatial_test_stage = { 4, 4, 8, spatial_test_cells };
     constexpr WorldBox spatial_test_obstacle_boxes[1] = {{ { 0, 0 }, 12, 12 }};
     constexpr StageStaticObstacleData spatial_test_obstacles = { spatial_test_obstacle_boxes, 1 };
 
-    static_assert(stage_world_minimum(spatial_test_stage) == -8);
-    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -8) == 0);
-    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -9) == -1);
-    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -1) == 0);
-    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, 0) == 1);
-    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, 7) == 1);
-    static_assert(stage_cell_world_box(spatial_test_stage, 0, 0).center == bn::fixed_point(-4, -4));
-    static_assert(stage_cell_world_box(spatial_test_stage, 1, 0).center == bn::fixed_point(4, -4));
+    [[nodiscard]] constexpr unsigned int full_scan_stage_obstacle_mask(const StageData& stage, const WorldBox& area)
+    {
+        unsigned int result = 0;
+        for(int cell_y = 0; cell_y < stage.height; ++cell_y)
+        {
+            for(int cell_x = 0; cell_x < stage.width; ++cell_x)
+            {
+                if(stage_cell_at(stage, cell_x, cell_y) == StageCell::BLOCKED &&
+                   touches_or_intersects(area, stage_cell_world_box(stage, cell_x, cell_y)))
+                {
+                    result |= 1U << stage_cell_index(stage, cell_x, cell_y);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    [[nodiscard]] constexpr unsigned int local_scan_stage_obstacle_mask(const StageData& stage, const WorldBox& area)
+    {
+        unsigned int result = 0;
+        StageCellRange range = stage_cell_range(stage, area);
+        for(int cell_y = range.min_y; cell_y <= range.max_y; ++cell_y)
+        {
+            for(int cell_x = range.min_x; cell_x <= range.max_x; ++cell_x)
+            {
+                if(stage_cell_at(stage, cell_x, cell_y) == StageCell::BLOCKED &&
+                   touches_or_intersects(area, stage_cell_world_box(stage, cell_x, cell_y)))
+                {
+                    result |= 1U << stage_cell_index(stage, cell_x, cell_y);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    [[nodiscard]] constexpr bool stage_obstacle_query_matches_full_scan(const StageData& stage, const WorldBox& area)
+    {
+        return full_scan_stage_obstacle_mask(stage, area) == local_scan_stage_obstacle_mask(stage, area);
+    }
+
+    static_assert(stage_world_minimum(spatial_test_stage) == -16);
+    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -16) == 0);
+    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -17) == -1);
+    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, -1) == 1);
+    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, 0) == 2);
+    static_assert(stage_cell_from_world_coordinate(spatial_test_stage, 7) == 2);
+    static_assert(stage_cell_world_box(spatial_test_stage, 0, 0).center == bn::fixed_point(-12, -12));
+    static_assert(stage_cell_world_box(spatial_test_stage, 1, 0).center == bn::fixed_point(-4, -12));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -12, -12 }, 2, 2 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -8, -12 }, 2, 2 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -8, -8 }, 2, 2 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -16, -12 }, 8, 4 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { 16, -12 }, 8, 4 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -12, -16 }, 4, 8 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -12, 16 }, 4, 8 }));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -18, -12 }, 8, 4 }));
+    static_assert(! has_stage_cells(stage_cell_range(spatial_test_stage, { { -24, -12 }, 4, 4 })));
+    static_assert(stage_obstacle_query_matches_full_scan(spatial_test_stage, { { -12, -12 }, 4, 4 }));
+    static_assert(full_scan_stage_obstacle_mask(spatial_test_stage, { { -12, -12 }, 4, 4 }) == 0);
+    static_assert(full_scan_stage_obstacle_mask(spatial_test_stage, { { -4, -12 }, 4, 4 }) == (1U << 1));
     static_assert(spatial_test_obstacles.count == 1);
     static_assert(touches_or_intersects({ { 6, 0 }, 8, 8 }, spatial_test_obstacle_boxes[0]));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::PLAYER, true,
@@ -124,21 +213,25 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
     const LayerData& layer_data = _layer_data(layer);
     const StageData& stage = *layer_data.stage;
     const StageStaticObstacleData& static_obstacles = *layer_data.static_obstacles;
-    for(int cell_y = 0; cell_y < stage.height; ++cell_y)
+    StageCellRange range = stage_cell_range(stage, movement_area);
+    if(has_stage_cells(range))
     {
-        for(int cell_x = 0; cell_x < stage.width; ++cell_x)
+        for(int cell_y = range.min_y; cell_y <= range.max_y; ++cell_y)
         {
-            if(stage_cell_at(stage, cell_x, cell_y) != StageCell::BLOCKED)
+            for(int cell_x = range.min_x; cell_x <= range.max_x; ++cell_x)
             {
-                continue;
-            }
+                if(stage_cell_at(stage, cell_x, cell_y) != StageCell::BLOCKED)
+                {
+                    continue;
+                }
 
-            WorldBox cell = stage_cell_world_box(stage, cell_x, cell_y);
-            if(touches_or_intersects(movement_area, cell))
-            {
-                BN_ASSERT(result.count < max_movement_obstacles);
-                result.boxes[result.count] = cell;
-                ++result.count;
+                WorldBox cell = stage_cell_world_box(stage, cell_x, cell_y);
+                if(touches_or_intersects(movement_area, cell))
+                {
+                    BN_ASSERT(result.count < max_movement_obstacles);
+                    result.boxes[result.count] = cell;
+                    ++result.count;
+                }
             }
         }
     }
