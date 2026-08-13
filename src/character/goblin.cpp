@@ -318,6 +318,19 @@ void Goblin::enter()
     set_visible(true);
 }
 
+void Goblin::deactivate()
+{
+    _active = false;
+    _respawning = false;
+    _respawn_timer = 0;
+    _state = State::DEAD;
+    _set_telegraph_visible(false);
+    _set_recovery_hourglass_visible(false);
+    _status_icon = StatusIcon::NONE;
+    _status_icon_sprite.set_visible(false);
+    set_visible(false);
+}
+
 void Goblin::set_home_position(const bn::fixed_point& position)
 {
     _home_position = position;

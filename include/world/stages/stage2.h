@@ -39,10 +39,12 @@ namespace stage2
         {
             for(int x = 0; x < width; ++x)
             {
-                bool boundary = x == 0 || x == width - 1 || y == 0 || y == height - 1;
-                bool central_platform = (x == 9 || x == 10) && (y == 9 || y == 10);
-                result[(y * width) + x] = boundary || central_platform ?
-                        StageCell::BLOCKED : StageCell::WALKABLE;
+                // These four 2x2 footprints match the raised structures in
+                // generate_stage2_terrain.py.  Until stairs arrive, UPPER
+                // actors remain on one of these visible platforms.
+                bool upper_platform = (x == 3 || x == 4 || x == 15 || x == 16) &&
+                                      (y == 4 || y == 5 || y == 13 || y == 14);
+                result[(y * width) + x] = upper_platform ? StageCell::WALKABLE : StageCell::BLOCKED;
             }
         }
 
@@ -60,10 +62,12 @@ namespace stage2
     constexpr StageStaticObstacleData static_obstacles = ground_static_obstacles;
 
     constexpr bn::fixed_point player_spawn(0, 56);
-    constexpr bn::array<bn::fixed_point, 4> goblin_spawns = {{
-        { -24, -40 }, { 24, -40 }, { -40, -4 }, { 40, -4 }
+    constexpr bn::array<bn::fixed_point, 2> goblin_spawns = {{
+        { -24, -40 }, { 24, -40 }
     }};
-    constexpr bn::fixed_point crossbow_spawn(0, -48);
+    constexpr bn::array<bn::fixed_point, 4> crossbow_spawns = {{
+        { -48, -40 }, { 48, -40 }, { -48, 32 }, { 48, 32 }
+    }};
     constexpr WorldBox exit_box = { { 0, -64 }, 24, 8 };
 
     static_assert(width * height == 400);
@@ -78,8 +82,16 @@ namespace stage2
     static_assert(stage_cell_at(ground_data, 15, 9) == StageCell::WALKABLE);
     static_assert(stage_cell_at(upper_data, 0, 0) == StageCell::BLOCKED);
     static_assert(stage_cell_at(upper_data, 3, 4) == StageCell::WALKABLE);
+    static_assert(stage_cell_at(upper_data, 15, 4) == StageCell::WALKABLE);
+    static_assert(stage_cell_at(upper_data, 3, 13) == StageCell::WALKABLE);
+    static_assert(stage_cell_at(upper_data, 15, 13) == StageCell::WALKABLE);
+    static_assert(stage_cell_at(upper_data, 5, 4) == StageCell::BLOCKED);
     static_assert(stage_cell_at(upper_data, 9, 9) == StageCell::BLOCKED);
     static_assert(stage_cell_at(ground_data, 9, 9) == StageCell::WALKABLE);
+    static_assert(crossbow_spawns[0] == bn::fixed_point(-48, -40));
+    static_assert(crossbow_spawns[1] == bn::fixed_point(48, -40));
+    static_assert(crossbow_spawns[2] == bn::fixed_point(-48, 32));
+    static_assert(crossbow_spawns[3] == bn::fixed_point(48, 32));
 }
 
 #endif

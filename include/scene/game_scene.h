@@ -21,7 +21,7 @@ class GameScene
 {
 public:
     static constexpr int goblin_count = 4;
-    static constexpr int crossbow_goblin_count = 1;
+    static constexpr int crossbow_goblin_count = 4;
     static constexpr int enemy_count = goblin_count + crossbow_goblin_count;
 
     enum class StagePhase
@@ -67,7 +67,7 @@ private:
     PlayerController _player_controller;
     MovementBounds _player_bounds;
     bn::array<Goblin, goblin_count> _goblins;
-    CrossbowGoblin _crossbow_goblin;
+    bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
     CollisionDebugOverlay _collision_debug_overlay;

@@ -32,6 +32,7 @@ public:
     Goblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
+    void deactivate();
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,

@@ -15,7 +15,10 @@ enum class SpatialActorId : int
     GOBLIN_1,
     GOBLIN_2,
     GOBLIN_3,
-    CROSSBOW_GOBLIN,
+    CROSSBOW_GOBLIN_0,
+    CROSSBOW_GOBLIN_1,
+    CROSSBOW_GOBLIN_2,
+    CROSSBOW_GOBLIN_3,
     COUNT
 };
 

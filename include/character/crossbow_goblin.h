@@ -21,6 +21,7 @@ public:
     CrossbowGoblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
+    void deactivate();
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
@@ -32,7 +33,8 @@ public:
     [[nodiscard]] WorldBox world_hurtbox() const;
     [[nodiscard]] WorldBox world_pushbox() const;
     [[nodiscard]] WorldBox movement_obstacle_query_area() const;
-    void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const;
+    void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes,
+                                      bool include_commit_boxes) const;
 
 private:
     enum class StatusIcon { NONE, DISCOVERY_FLASH, TELEGRAPH, RECOVERY_HOURGLASS, RETURN_QUESTION };

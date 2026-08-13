@@ -23,9 +23,11 @@ struct CollisionDebugBox
 class CollisionDebugBoxList
 {
 public:
-    // Player (2 + two melee hitboxes), four melee goblins (3 each), one
-    // crossbow goblin (two bodies plus six directional Commit cells), every
-    // landing slot in its four-arrow pool, and Stage1's static rock obstacle.
+    // Stage1's maximum: player (2 + two melee hitboxes), four melee goblins
+    // (3 each), one active crossbow goblin (two bodies plus six directional
+    // Commit cells), every landing slot in its four-arrow pool, and the rock.
+    // Stage2 has four crossbows, so it omits their commit-cell preview to stay
+    // within the GBA OBJ budget while retaining their body boxes.
     static constexpr int capacity = 29;
 
     bool add(const WorldBox& box, CollisionDebugBoxType type)
