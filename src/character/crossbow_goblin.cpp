@@ -210,6 +210,19 @@ void CrossbowGoblin::enter()
     _set_telegraph_visible(false); apply_movement(_home_position, Direction::DOWN); set_visible(true);
 }
 
+void CrossbowGoblin::deactivate()
+{
+    _active = false;
+    _respawning = false;
+    _respawn_timer = 0;
+    _state = State::DEAD;
+    _set_telegraph_visible(false);
+    _set_recovery_hourglass_visible(false);
+    _status_icon = StatusIcon::NONE;
+    _status_icon_sprite.set_visible(false);
+    set_visible(false);
+}
+
 void CrossbowGoblin::set_home_position(const bn::fixed_point& position)
 {
     _home_position = position;
@@ -265,11 +278,12 @@ WorldBox CrossbowGoblin::movement_obstacle_query_area() const
     return _active ? world_pushbox() : expanded_box(world_box(_home_position, collision_body().pushbox.box), respawn_clearance);
 }
 
-void CrossbowGoblin::append_collision_debug_boxes(const WorldBox&, CollisionDebugBoxList& boxes) const
+void CrossbowGoblin::append_collision_debug_boxes(const WorldBox&, CollisionDebugBoxList& boxes,
+                                                   bool include_commit_boxes) const
 {
     if(! _active) return;
     boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX); boxes.add(world_pushbox(), CollisionDebugBoxType::PUSHBOX);
-    if(_state == State::CHASE || _state == State::TELEGRAPH)
+    if(include_commit_boxes && (_state == State::CHASE || _state == State::TELEGRAPH))
     {
         Direction commit_direction = _state == State::TELEGRAPH ? _attack_direction : _alignment_direction;
         for(const WorldBox& box : commit_boxes(position(), commit_direction))

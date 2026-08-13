@@ -8,17 +8,20 @@
 
 #include "combat/collision/collision_body.h"
 #include "game/direction.h"
+#include "world/spatial_layer.h"
 
 class Character
 {
 public:
     void set_visible(bool visible);
     void apply_movement(const bn::fixed_point& position, Direction direction);
+    void set_spatial_layer(SpatialLayer layer);
 
     [[nodiscard]] bn::fixed movement_speed() const;
     [[nodiscard]] Direction direction() const;
     [[nodiscard]] bn::fixed_point position() const;
     [[nodiscard]] const CollisionBody& collision_body() const;
+    [[nodiscard]] SpatialLayer spatial_layer() const;
 
 protected:
     Character(const bn::sprite_item& sprite_item, const bn::fixed_point& initial_position,
@@ -30,6 +33,7 @@ private:
     Direction _direction;
     bn::fixed _movement_speed;
     CollisionBody _collision_body;
+    SpatialLayer _spatial_layer = SpatialLayer::GROUND;
 };
 
 #endif

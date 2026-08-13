@@ -11,6 +11,11 @@ namespace
         return int(actor_id);
     }
 
+    [[nodiscard]] constexpr bool same_spatial_layer(SpatialLayer first, SpatialLayer second)
+    {
+        return first == second;
+    }
+
     [[nodiscard]] constexpr WorldBox stage_cell_world_box(const StageData& stage, int cell_x, int cell_y)
     {
         int world_minimum = stage_world_minimum(stage);
@@ -22,9 +27,11 @@ namespace
     }
 
     [[nodiscard]] constexpr bool should_include_actor(SpatialActorId requesting_actor, SpatialActorId candidate_actor,
-                                                       bool candidate_active)
+                                                       bool candidate_active, SpatialLayer requesting_layer,
+                                                       SpatialLayer candidate_layer)
     {
-        return candidate_active && requesting_actor != candidate_actor;
+        return candidate_active && requesting_actor != candidate_actor &&
+               same_spatial_layer(requesting_layer, candidate_layer);
     }
 
     constexpr StageCell spatial_test_cells[4] = {
@@ -45,41 +52,52 @@ namespace
     static_assert(stage_cell_world_box(spatial_test_stage, 1, 0).center == bn::fixed_point(4, -4));
     static_assert(spatial_test_obstacles.count == 1);
     static_assert(touches_or_intersects({ { 6, 0 }, 8, 8 }, spatial_test_obstacle_boxes[0]));
-    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::PLAYER, true));
-    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, false));
-    static_assert(should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true));
+    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::PLAYER, true,
+                                        SpatialLayer::GROUND, SpatialLayer::GROUND));
+    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, false,
+                                        SpatialLayer::GROUND, SpatialLayer::GROUND));
+    static_assert(should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true,
+                                       SpatialLayer::GROUND, SpatialLayer::GROUND));
+    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true,
+                                        SpatialLayer::GROUND, SpatialLayer::UPPER));
 }
 
-SpatialManager::SpatialManager(const StageData& stage, const StageStaticObstacleData& static_obstacles) :
-    _stage(&stage),
-    _static_obstacles(&static_obstacles)
+SpatialManager::SpatialManager(const StageData& ground_stage, const StageStaticObstacleData& ground_static_obstacles,
+                               const StageData& upper_stage, const StageStaticObstacleData& upper_static_obstacles) :
+    _ground{ &ground_stage, &ground_static_obstacles },
+    _upper{ &upper_stage, &upper_static_obstacles }
 {
-    set_stage(stage, static_obstacles);
+    set_stage(ground_stage, ground_static_obstacles, upper_stage, upper_static_obstacles);
 }
 
-void SpatialManager::set_stage(const StageData& stage, const StageStaticObstacleData& static_obstacles)
+void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticObstacleData& ground_static_obstacles,
+                               const StageData& upper_stage, const StageStaticObstacleData& upper_static_obstacles)
 {
-    BN_ASSERT(stage.width > 0);
-    BN_ASSERT(stage.height > 0);
-    BN_ASSERT(stage.tile_size > 0);
-    BN_ASSERT(stage.movement_cells);
-    BN_ASSERT(static_obstacles.count >= 0);
-    BN_ASSERT(static_obstacles.count == 0 || static_obstacles.boxes);
-    BN_ASSERT(static_obstacles.count <= max_stage_object_movement_obstacles);
-    _stage = &stage;
-    _static_obstacles = &static_obstacles;
+    BN_ASSERT(ground_stage.width > 0 && ground_stage.height > 0 && ground_stage.tile_size > 0);
+    BN_ASSERT(upper_stage.width > 0 && upper_stage.height > 0 && upper_stage.tile_size > 0);
+    BN_ASSERT(ground_stage.movement_cells && upper_stage.movement_cells);
+    BN_ASSERT(ground_static_obstacles.count >= 0 && upper_static_obstacles.count >= 0);
+    BN_ASSERT(ground_static_obstacles.count == 0 || ground_static_obstacles.boxes);
+    BN_ASSERT(upper_static_obstacles.count == 0 || upper_static_obstacles.boxes);
+    BN_ASSERT(ground_static_obstacles.count <= max_stage_object_movement_obstacles);
+    BN_ASSERT(upper_static_obstacles.count <= max_stage_object_movement_obstacles);
+    _ground = { &ground_stage, &ground_static_obstacles };
+    _upper = { &upper_stage, &upper_static_obstacles };
 }
 
-void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox)
+void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
     actor.pushbox = pushbox;
+    actor.layer = layer;
     actor.active = true;
 }
 
-void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox)
+void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
-    _actors[actor_index(actor_id)].pushbox = pushbox;
+    Actor& actor = _actors[actor_index(actor_id)];
+    actor.pushbox = pushbox;
+    actor.layer = layer;
 }
 
 void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
@@ -87,9 +105,14 @@ void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
     _actors[actor_index(actor_id)].active = active;
 }
 
-const StageStaticObstacleData& SpatialManager::static_obstacles() const
+const StageStaticObstacleData& SpatialManager::static_obstacles(SpatialLayer layer) const
 {
-    return *_static_obstacles;
+    return *_layer_data(layer).static_obstacles;
+}
+
+const SpatialManager::LayerData& SpatialManager::_layer_data(SpatialLayer layer) const
+{
+    return layer == SpatialLayer::GROUND ? _ground : _upper;
 }
 
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
@@ -97,8 +120,10 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
 {
     WorldBoxList<max_movement_obstacles> result;
 
-    const StageData& stage = *_stage;
-    const StageStaticObstacleData& static_obstacles = *_static_obstacles;
+    const SpatialLayer layer = _actors[actor_index(actor_id)].layer;
+    const LayerData& layer_data = _layer_data(layer);
+    const StageData& stage = *layer_data.stage;
+    const StageStaticObstacleData& static_obstacles = *layer_data.static_obstacles;
     for(int cell_y = 0; cell_y < stage.height; ++cell_y)
     {
         for(int cell_x = 0; cell_x < stage.width; ++cell_x)
@@ -133,7 +158,7 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
     {
         SpatialActorId candidate_id = SpatialActorId(index);
         const Actor& actor = _actors[index];
-        if(should_include_actor(actor_id, candidate_id, actor.active) &&
+        if(should_include_actor(actor_id, candidate_id, actor.active, layer, actor.layer) &&
            touches_or_intersects(movement_area, actor.pushbox))
         {
             BN_ASSERT(result.count < max_movement_obstacles);

@@ -22,6 +22,11 @@ void Character::apply_movement(const bn::fixed_point& position, Direction direct
     _sprite.set_position(position);
 }
 
+void Character::set_spatial_layer(SpatialLayer layer)
+{
+    _spatial_layer = layer;
+}
+
 bn::fixed Character::movement_speed() const
 {
     return _movement_speed;
@@ -40,4 +45,9 @@ bn::fixed_point Character::position() const
 const CollisionBody& Character::collision_body() const
 {
     return _collision_body;
+}
+
+SpatialLayer Character::spatial_layer() const
+{
+    return _spatial_layer;
 }

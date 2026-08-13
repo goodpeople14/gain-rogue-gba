@@ -318,6 +318,19 @@ void Goblin::enter()
     set_visible(true);
 }
 
+void Goblin::deactivate()
+{
+    _active = false;
+    _respawning = false;
+    _respawn_timer = 0;
+    _state = State::DEAD;
+    _set_telegraph_visible(false);
+    _set_recovery_hourglass_visible(false);
+    _status_icon = StatusIcon::NONE;
+    _status_icon_sprite.set_visible(false);
+    set_visible(false);
+}
+
 void Goblin::set_home_position(const bn::fixed_point& position)
 {
     _home_position = position;
@@ -333,7 +346,7 @@ void Goblin::set_respawn_enabled(bool enabled)
     }
 }
 
-void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,
                     const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! _active)
@@ -347,10 +360,26 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
 
     _update_timed_status_icon();
 
+    // A floor transition does not exist yet.  An enemy on the other logical
+    // layer therefore keeps its local roaming behavior instead of chasing a
+    // player it cannot physically reach.
+    if(! player_on_same_layer && (_state == State::CHASE || _state == State::RETURN ||
+                                  _state == State::TELEGRAPH || _state == State::ACTIVE ||
+                                  _state == State::RECOVERY))
+    {
+        _reset_local_avoidance();
+        _set_telegraph_visible(false);
+        _set_recovery_hourglass_visible(false);
+        _state = State::ROAM;
+        _state_timer = roam_direction_frames;
+        _status_icon_timer = 0;
+        _set_awareness_icon(StatusIcon::NONE);
+    }
+
     switch(_state)
     {
     case State::ROAM:
-        if(within_distance(position(), player_pushbox.center, discovery_distance))
+        if(player_on_same_layer && within_distance(position(), player_pushbox.center, discovery_distance))
         {
             _state = State::CHASE;
             _status_icon_timer = discovery_flash_frames;
