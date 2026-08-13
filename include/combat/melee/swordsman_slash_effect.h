@@ -14,6 +14,7 @@ public:
 
     void play(const AttackContext& context);
     void update(const bn::fixed_point& position);
+    void clear();
 
     [[nodiscard]] bool active() const;
 

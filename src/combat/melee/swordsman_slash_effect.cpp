@@ -77,6 +77,13 @@ void SwordsmanSlashEffect::update(const bn::fixed_point& position)
     _sprite->set_item(slash_item(_direction), _frame);
 }
 
+void SwordsmanSlashEffect::clear()
+{
+    _sprite.reset();
+    _frame = 0;
+    _ticks_in_frame = 0;
+}
+
 bool SwordsmanSlashEffect::active() const
 {
     return bool(_sprite);

@@ -14,6 +14,7 @@ public:
     [[nodiscard]] bool can_attack() const;
     bool try_attack(const AttackContext& context);
     void update(const bn::fixed_point& owner_position);
+    void clear_visual_effect();
 
     [[nodiscard]] WorldBoxList<max_hitboxes_per_frame> active_hitboxes() const;
     [[nodiscard]] int try_hit(int target_id, const bn::fixed_point& target_position,

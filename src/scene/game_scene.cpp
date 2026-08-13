@@ -606,6 +606,8 @@ void GameScene::_update_playing()
     if(_all_stage_enemies_defeated())
     {
         _stage_phase = StagePhase::CLEARED;
+        _player.melee_attack().clear_visual_effect();
+        _hit_effects.clear();
         _set_stage_message("EXIT", 4, exit_message_y, 8, 1);
     }
 }
