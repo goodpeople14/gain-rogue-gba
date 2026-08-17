@@ -2,6 +2,8 @@
 
 Sprite 또는 Effect의 palette를 생성·변경할 때는 [GBA Sprite Palette Harness](gba-sprite-palette.md)를 함께 따른다.
 
+Character의 정적 방향 Sprite를 새로 만들거나 교체할 때는 [GBA Character Sprite Editing Harness](gba-character-sprite-editing.md)를 함께 따른다. 이 하네스는 승인된 캐릭터 정체성을 유지한 채 Base Sprite를 production용 방향 Sprite로 편집·정제하는 규칙이며, Walk / Attack / Hit 같은 Animation 제작법은 아직 포함하지 않는다.
+
 ## 빌드 연동
 
 - Butano는 루트 `Makefile`의 `GRAPHICS`에 등록된 자산 디렉터리를 처리한다.
