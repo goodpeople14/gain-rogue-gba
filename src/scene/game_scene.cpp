@@ -4,6 +4,7 @@
 #include "bn_array.h"
 #include "bn_fixed.h"
 #include "bn_keypad.h"
+#include "bn_sprite_builder.h"
 #include "bn_sprite_item.h"
 #include "bn_tile.h"
 
@@ -185,6 +186,22 @@ namespace
             bn::sprite_shape_size(8, 8), stage_glyph_tiles, stage_glyph_colors,
             bn::bpp_mode::BPP_4, stage_glyph_tiles.size());
 
+    [[nodiscard]] bn::array<bn::sprite_tiles_ptr, stage_glyph_tiles.size()> make_stage_glyph_tiles()
+    {
+        return {{
+            stage_glyph_item.tiles_item().create_tiles(0), stage_glyph_item.tiles_item().create_tiles(1),
+            stage_glyph_item.tiles_item().create_tiles(2), stage_glyph_item.tiles_item().create_tiles(3),
+            stage_glyph_item.tiles_item().create_tiles(4), stage_glyph_item.tiles_item().create_tiles(5),
+            stage_glyph_item.tiles_item().create_tiles(6), stage_glyph_item.tiles_item().create_tiles(7),
+            stage_glyph_item.tiles_item().create_tiles(8), stage_glyph_item.tiles_item().create_tiles(9),
+            stage_glyph_item.tiles_item().create_tiles(10), stage_glyph_item.tiles_item().create_tiles(11),
+            stage_glyph_item.tiles_item().create_tiles(12), stage_glyph_item.tiles_item().create_tiles(13),
+            stage_glyph_item.tiles_item().create_tiles(14), stage_glyph_item.tiles_item().create_tiles(15),
+            stage_glyph_item.tiles_item().create_tiles(16), stage_glyph_item.tiles_item().create_tiles(17),
+            stage_glyph_item.tiles_item().create_tiles(18), stage_glyph_item.tiles_item().create_tiles(19)
+        }};
+    }
+
     [[nodiscard]] constexpr int stage_glyph_index(char character)
     {
         switch(character)
@@ -355,6 +372,9 @@ GameScene::GameScene() :
         CrossbowGoblin(crossbow_goblin_home_positions[2], crossbow_goblin_target_ids[2]),
         CrossbowGoblin(crossbow_goblin_home_positions[3], crossbow_goblin_target_ids[3])
     }},
+    _stage_glyph_tiles(make_stage_glyph_tiles()),
+    // This shares the title glyph palette and keeps it alive after TitleScene::hide().
+    _stage_glyph_palette(stage_glyph_item.palette_item().create_palette()),
     _spatial_debug_overlay(stage1::data),
     _spatial_manager(stage1::data, stage1::static_obstacles, stage1::data, stage1::static_obstacles)
 {
@@ -497,6 +517,7 @@ void GameScene::_start_stage(StageId stage)
         }
     }
 
+    _player.melee_attack().clear_visual_effect();
     _crossbow_projectiles.clear();
     _hit_effects.clear();
     _collision_debug_overlay.reset();
@@ -606,8 +627,6 @@ void GameScene::_update_playing()
     if(_all_stage_enemies_defeated())
     {
         _stage_phase = StagePhase::CLEARED;
-        _player.melee_attack().clear_visual_effect();
-        _hit_effects.clear();
         _set_stage_message("EXIT", 4, exit_message_y, 8, 1);
     }
 }
@@ -615,6 +634,7 @@ void GameScene::_update_playing()
 void GameScene::_update_cleared()
 {
     _update_player_gameplay();
+    _crossbow_projectiles.update();
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
@@ -671,9 +691,12 @@ void GameScene::_set_stage_message(const char* text, int character_count, int y,
         int glyph_index = stage_glyph_index(text[index]);
         if(glyph_index >= 0)
         {
-            bn::sprite_ptr sprite = stage_glyph_item.create_sprite(x, y, glyph_index);
-            sprite.set_scale(scale);
-            sprite.set_z_order(-4);
+            bn::sprite_builder sprite_builder(
+                    stage_glyph_item.shape_size(), _stage_glyph_tiles[glyph_index], _stage_glyph_palette);
+            sprite_builder.set_position(x, y);
+            sprite_builder.set_scale(scale);
+            sprite_builder.set_z_order(-4);
+            bn::sprite_ptr sprite = sprite_builder.release_build();
             _stage_message_sprites.push_back(bn::move(sprite));
         }
 

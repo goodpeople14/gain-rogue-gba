@@ -3,7 +3,9 @@
 
 #include "bn_array.h"
 #include "bn_fixed.h"
+#include "bn_sprite_palette_ptr.h"
 #include "bn_sprite_ptr.h"
+#include "bn_sprite_tiles_ptr.h"
 #include "bn_vector.h"
 
 #include "character/player_controller.h"
@@ -70,6 +72,8 @@ private:
     bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
+    bn::array<bn::sprite_tiles_ptr, 20> _stage_glyph_tiles;
+    bn::sprite_palette_ptr _stage_glyph_palette;
     CollisionDebugOverlay _collision_debug_overlay;
     SpatialDebugOverlay _spatial_debug_overlay;
     SpatialManager _spatial_manager;
