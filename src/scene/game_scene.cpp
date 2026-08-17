@@ -38,8 +38,14 @@ namespace
     constexpr int go_frames = 45;
     constexpr int congratulations_frames = 120;
     constexpr int game_over_frames = 120;
+    constexpr int player_dead_frames = 120;
     constexpr int stage_message_y = 0;
     constexpr int exit_message_y = -65;
+    constexpr int player_health_hud_x = -104;
+    constexpr int player_health_hud_y = 64;
+    constexpr int player_health_hud_spacing = 9;
+    constexpr int player_name_hud_spacing = 7;
+    constexpr int player_name_to_health_spacing = 5;
     constexpr bn::array<SpatialActorId, GameScene::goblin_count> goblin_spatial_actor_ids = {{
         SpatialActorId::GOBLIN_0, SpatialActorId::GOBLIN_1,
         SpatialActorId::GOBLIN_2, SpatialActorId::GOBLIN_3
@@ -176,7 +182,7 @@ namespace
     };
 
     constexpr bn::array<bn::color, 16> stage_glyph_colors = {
-        bn::color(0, 0, 0), bn::color(31, 28, 16), bn::color(), bn::color(),
+        bn::color(0, 0, 0), bn::color(31, 28, 16), bn::color(31, 0, 0), bn::color(12, 0, 0),
         bn::color(), bn::color(), bn::color(), bn::color(),
         bn::color(), bn::color(), bn::color(), bn::color(),
         bn::color(), bn::color(), bn::color(), bn::color()
@@ -185,6 +191,32 @@ namespace
     constexpr bn::sprite_item stage_glyph_item(
             bn::sprite_shape_size(8, 8), stage_glyph_tiles, stage_glyph_colors,
             bn::bpp_mode::BPP_4, stage_glyph_tiles.size());
+
+    constexpr bn::tile make_player_health_tile(bool filled)
+    {
+        bn::tile result = {};
+
+        for(int y = 1; y < 7; ++y)
+        {
+            for(int x = 1; x < 7; ++x)
+            {
+                if(filled || x == 1 || x == 6 || y == 1 || y == 6)
+                {
+                    unsigned int color_index = filled ? 2 : 3;
+                    result.data[y] |= color_index << (x * 4);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    constexpr bn::array<bn::tile, 2> player_health_tile_data = {
+        make_player_health_tile(false), make_player_health_tile(true)
+    };
+
+    constexpr bn::sprite_tiles_item player_health_tiles_item(
+            player_health_tile_data, bn::bpp_mode::BPP_4, player_health_tile_data.size());
 
     [[nodiscard]] bn::array<bn::sprite_tiles_ptr, stage_glyph_tiles.size()> make_stage_glyph_tiles()
     {
@@ -200,6 +232,11 @@ namespace
             stage_glyph_item.tiles_item().create_tiles(16), stage_glyph_item.tiles_item().create_tiles(17),
             stage_glyph_item.tiles_item().create_tiles(18), stage_glyph_item.tiles_item().create_tiles(19)
         }};
+    }
+
+    [[nodiscard]] bn::array<bn::sprite_tiles_ptr, player_health_tile_data.size()> make_player_health_tiles()
+    {
+        return {{ player_health_tiles_item.create_tiles(0), player_health_tiles_item.create_tiles(1) }};
     }
 
     [[nodiscard]] constexpr int stage_glyph_index(char character)
@@ -375,17 +412,47 @@ GameScene::GameScene() :
     _stage_glyph_tiles(make_stage_glyph_tiles()),
     // This shares the title glyph palette and keeps it alive after TitleScene::hide().
     _stage_glyph_palette(stage_glyph_item.palette_item().create_palette()),
+    _player_health_tiles(make_player_health_tiles()),
     _spatial_debug_overlay(stage1::data),
     _spatial_manager(stage1::data, stage1::static_obstacles, stage1::data, stage1::static_obstacles)
 {
+    int health_x = player_health_hud_x;
+    const CharacterDefinition& player_definition = _player.definition();
+    for(int index = 0; index < player_definition.display_name_length; ++index)
+    {
+        int glyph_index = stage_glyph_index(player_definition.display_name[index]);
+        BN_ASSERT(glyph_index >= 0, "Unsupported HUD glyph");
+
+        bn::sprite_builder sprite_builder(
+                stage_glyph_item.shape_size(), _stage_glyph_tiles[glyph_index], _stage_glyph_palette);
+        sprite_builder.set_position(health_x, player_health_hud_y);
+        sprite_builder.set_z_order(-4);
+        bn::sprite_ptr sprite = sprite_builder.release_build();
+        sprite.set_visible(false);
+        _player_name_sprites.push_back(bn::move(sprite));
+        health_x += player_name_hud_spacing;
+    }
+
+    health_x += player_name_to_health_spacing;
+    for(int index = 0; index < _player.max_health(); ++index)
+    {
+        bn::sprite_builder sprite_builder(
+                bn::sprite_shape_size(8, 8), _player_health_tiles[1], _stage_glyph_palette);
+        sprite_builder.set_position(health_x + index * player_health_hud_spacing, player_health_hud_y);
+        sprite_builder.set_z_order(-4);
+        bn::sprite_ptr sprite = sprite_builder.release_build();
+        sprite.set_visible(false);
+        _player_health_sprites.push_back(bn::move(sprite));
+    }
+
     _player.set_visible(false);
     for(Goblin& goblin : _goblins)
     {
-        goblin.set_visible(false);
+        goblin.hide();
     }
     for(CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
     {
-        crossbow_goblin.set_visible(false);
+        crossbow_goblin.hide();
     }
 }
 
@@ -393,6 +460,9 @@ void GameScene::enter()
 {
     bn::bg_palettes::set_transparent_color(game_background_color);
     _battlefield.set_visible(true);
+    _player.reset_health();
+    _update_player_health_hud();
+    _set_player_hud_visible(true);
     _start_stage(StageId::STAGE_1);
 }
 
@@ -400,23 +470,36 @@ void GameScene::exit()
 {
     _battlefield.set_visible(false);
     _player.set_visible(false);
+    _player.melee_attack().clear_visual_effect();
     for(Goblin& goblin : _goblins)
     {
-        goblin.set_visible(false);
+        goblin.hide();
     }
     for(CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
     {
-        crossbow_goblin.set_visible(false);
+        crossbow_goblin.hide();
     }
     _crossbow_projectiles.clear();
     _hit_effects.clear();
     _collision_debug_overlay.reset();
     _spatial_debug_overlay.reset();
+    _set_player_hud_visible(false);
     _clear_stage_message();
 }
 
 bool GameScene::update()
 {
+    if(_stage_phase == StagePhase::PLAYER_DEAD)
+    {
+        if(--_phase_frames_remaining == 0)
+        {
+            _clear_stage_message();
+            return true;
+        }
+
+        return false;
+    }
+
     if(_stage_phase == StagePhase::CONGRATULATIONS || _stage_phase == StagePhase::GAME_OVER)
     {
         if(--_phase_frames_remaining == 0)
@@ -611,18 +694,26 @@ void GameScene::_update_playing()
     }
     _crossbow_projectiles.update();
 
+    int player_damage = 0;
     for(Goblin& goblin : _goblins)
     {
         goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
-        goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
+        player_damage += goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
     }
     for(CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
     {
         crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
     }
-    _crossbow_projectiles.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
+    player_damage += _crossbow_projectiles.resolve_player_hit(
+            _player.position(), _player.collision_body().hurtbox, _hit_effects);
     _sync_spatial_actors();
     _hit_effects.update();
+
+    _apply_player_damage(player_damage);
+    if(_player.dead())
+    {
+        return;
+    }
 
     if(_all_stage_enemies_defeated())
     {
@@ -679,6 +770,44 @@ void GameScene::_update_player_gameplay()
     }
 
     _player.update();
+}
+
+void GameScene::_apply_player_damage(int damage)
+{
+    if(damage <= 0)
+    {
+        return;
+    }
+
+    _player.take_damage(damage);
+    _update_player_health_hud();
+    if(_player.dead())
+    {
+        _stage_phase = StagePhase::PLAYER_DEAD;
+        _phase_frames_remaining = player_dead_frames;
+        _set_stage_message("YOU DIED", 8, stage_message_y, 12, 1);
+    }
+}
+
+void GameScene::_update_player_health_hud()
+{
+    for(int index = 0; index < _player_health_sprites.size(); ++index)
+    {
+        _player_health_sprites[index].set_tiles(_player_health_tiles[index < _player.current_health() ? 1 : 0]);
+    }
+}
+
+void GameScene::_set_player_hud_visible(bool visible)
+{
+    for(bn::sprite_ptr& sprite : _player_name_sprites)
+    {
+        sprite.set_visible(visible);
+    }
+
+    for(bn::sprite_ptr& sprite : _player_health_sprites)
+    {
+        sprite.set_visible(visible);
+    }
 }
 
 void GameScene::_set_stage_message(const char* text, int character_count, int y, int spacing, bn::fixed scale)

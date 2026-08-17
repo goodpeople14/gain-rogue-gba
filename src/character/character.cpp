@@ -1,12 +1,15 @@
 #include "character/character.h"
 
 Character::Character(const bn::sprite_item& sprite_item, const bn::fixed_point& initial_position,
-                     Direction direction, bn::fixed movement_speed, const CollisionBody& collision_body) :
+                     Direction direction, bn::fixed movement_speed, const CollisionBody& collision_body,
+                     const CharacterDefinition& definition) :
     _sprite(sprite_item.create_sprite(initial_position, int(direction))),
     _tiles_item(sprite_item.tiles_item()),
     _direction(direction),
     _movement_speed(movement_speed),
-    _collision_body(collision_body)
+    _collision_body(collision_body),
+    _definition(&definition),
+    _health(definition.max_hp)
 {
 }
 
@@ -25,6 +28,16 @@ void Character::apply_movement(const bn::fixed_point& position, Direction direct
 void Character::set_spatial_layer(SpatialLayer layer)
 {
     _spatial_layer = layer;
+}
+
+void Character::take_damage(int damage)
+{
+    _health.damage(damage);
+}
+
+void Character::reset_health()
+{
+    _health.reset();
 }
 
 bn::fixed Character::movement_speed() const
@@ -50,4 +63,24 @@ const CollisionBody& Character::collision_body() const
 SpatialLayer Character::spatial_layer() const
 {
     return _spatial_layer;
+}
+
+const CharacterDefinition& Character::definition() const
+{
+    return *_definition;
+}
+
+int Character::current_health() const
+{
+    return _health.current();
+}
+
+int Character::max_health() const
+{
+    return _health.max();
+}
+
+bool Character::dead() const
+{
+    return _health.is_dead();
 }

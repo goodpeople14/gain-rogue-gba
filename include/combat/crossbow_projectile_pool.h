@@ -19,8 +19,8 @@ public:
 
     void spawn(const bn::fixed_point& start, const bn::fixed_point& target);
     void update();
-    void resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
-                            HitEffectManager& hit_effects);
+    [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
+                                         HitEffectManager& hit_effects);
     void append_collision_debug_boxes(CollisionDebugBoxList& boxes) const;
     void clear();
 

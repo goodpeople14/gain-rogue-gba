@@ -33,6 +33,7 @@ public:
         GO,
         PLAYING,
         CLEARED,
+        PLAYER_DEAD,
         CONGRATULATIONS,
         GAME_OVER
     };
@@ -44,6 +45,9 @@ public:
     [[nodiscard]] bool update();
 
 private:
+    static constexpr int max_player_hud_name_length = 16;
+    static constexpr int max_player_health_hud_cells = 8;
+
     enum class StageId
     {
         STAGE_1,
@@ -55,6 +59,9 @@ private:
     void _update_playing();
     void _update_cleared();
     void _update_player_gameplay();
+    void _apply_player_damage(int damage);
+    void _update_player_health_hud();
+    void _set_player_hud_visible(bool visible);
     void _set_stage_message(const char* text, int character_count, int y, int spacing, bn::fixed scale);
     void _clear_stage_message();
     [[nodiscard]] bool _stage_has_enemies() const;
@@ -74,6 +81,9 @@ private:
     HitEffectManager _hit_effects;
     bn::array<bn::sprite_tiles_ptr, 20> _stage_glyph_tiles;
     bn::sprite_palette_ptr _stage_glyph_palette;
+    bn::array<bn::sprite_tiles_ptr, 2> _player_health_tiles;
+    bn::vector<bn::sprite_ptr, max_player_hud_name_length> _player_name_sprites;
+    bn::vector<bn::sprite_ptr, max_player_health_hud_cells> _player_health_sprites;
     CollisionDebugOverlay _collision_debug_overlay;
     SpatialDebugOverlay _spatial_debug_overlay;
     SpatialManager _spatial_manager;

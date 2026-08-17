@@ -17,11 +17,11 @@ class CrossbowGoblin final : public Character
 {
 public:
     enum class State { ROAM, CHASE, TELEGRAPH, RECOVERY, RETURN, DEAD };
-
     CrossbowGoblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
     void deactivate();
+    void hide();
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
