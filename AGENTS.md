@@ -30,6 +30,7 @@
 - 전투 구조: `docs/combat-rules.md`
 - 충돌 규칙: `docs/collision-rules.md`
 - 그래픽 규칙: `docs/graphics-rules.md`
+- Character Sprite 이미지 편집 하네스: `docs/gba-character-sprite-editing.md`
 - Sprite palette 정책: `docs/gba-sprite-palette.md`
 - 중요한 설계 결정: `docs/decisions/`
 - 사고 과정과 학습 기록: `docs/journal/`
@@ -39,6 +40,7 @@
 ## 자산과 생성 파일
 
 - 루트 `Makefile`에 필요한 소스 및 그래픽 디렉터리가 등록되어 있는지 확인한다.
+- Character의 정적 방향 Sprite를 새로 만들거나 교체할 때는 `docs/gba-character-sprite-editing.md`를 먼저 확인한다.
 - `build/`, `.gba`, `.elf`, 에뮬레이터 저장 및 상태 파일을 커밋하지 않는다.
 - 생성 도구나 검증 도구가 있는 자산은 원본 도구를 함께 갱신하고 실행한다.
 - 요청과 소비 코드를 함께 변경하지 않는 한 기존 자산의 크기, 프레임 순서, 팔레트와 메타데이터를 바꾸지 않는다.
