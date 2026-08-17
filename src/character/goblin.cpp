@@ -14,6 +14,9 @@
 
 namespace
 {
+    constexpr CharacterDefinition goblin_definition = {
+        CharacterId::GOBLIN, "GOBLIN", 6, 1
+    };
     constexpr int player_target_id = 0;
     constexpr int home_radius = 28;
     constexpr int discovery_distance = 42;
@@ -30,6 +33,10 @@ namespace
     constexpr int commit_margin = 2;
     constexpr int goblin_size = 16;
     constexpr int stuck_frames_before_detour = 6;
+
+    static_assert(goblin_definition.id == CharacterId::GOBLIN);
+    static_assert(goblin_definition.display_name_length == 6);
+    static_assert(goblin_definition.max_hp == 1);
     // At 0.5px per frame, this moves a goblin one 16px Stage obstacle width.
     constexpr int max_detour_frames = 32;
 
@@ -276,7 +283,8 @@ namespace
 }
 
 Goblin::Goblin(const bn::fixed_point& home_position, int target_id) :
-    Character(bn::sprite_items::goblin, home_position, Direction::DOWN, chase_speed, goblin_collision_body),
+    Character(bn::sprite_items::goblin, home_position, Direction::DOWN, chase_speed, goblin_collision_body,
+              goblin_definition),
     _home_position(home_position),
     _awareness_icon_tiles{{
         bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(0),
@@ -300,6 +308,7 @@ Goblin::Goblin(const bn::fixed_point& home_position, int target_id) :
 
 void Goblin::enter()
 {
+    reset_health();
     _state = State::ROAM;
     _state_timer = roam_direction_frames;
     _roam_direction_index = 0;
@@ -324,6 +333,15 @@ void Goblin::deactivate()
     _respawning = false;
     _respawn_timer = 0;
     _state = State::DEAD;
+    _set_telegraph_visible(false);
+    _set_recovery_hourglass_visible(false);
+    _status_icon = StatusIcon::NONE;
+    _status_icon_sprite.set_visible(false);
+    set_visible(false);
+}
+
+void Goblin::hide()
+{
     _set_telegraph_visible(false);
     _set_recovery_hourglass_visible(false);
     _status_icon = StatusIcon::NONE;
@@ -428,16 +446,20 @@ void Goblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hi
     if(damage > 0)
     {
         hit_effects.spawn(world_hurtbox().center);
-        _die();
+        take_damage(damage);
+        if(dead())
+        {
+            _die();
+        }
     }
 }
 
-void Goblin::resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
-                                HitEffectManager& hit_effects)
+int Goblin::resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
+                               HitEffectManager& hit_effects)
 {
     if(! attack_active() || _attack_hit_registry.contains(player_target_id))
     {
-        return;
+        return 0;
     }
 
     WorldBox hitbox = attack_hitbox(position(), _attack_direction);
@@ -445,7 +467,10 @@ void Goblin::resolve_player_hit(const bn::fixed_point& player_position, const Hu
     if(touches_or_intersects(hitbox, hurtbox) && _attack_hit_registry.add(player_target_id))
     {
         hit_effects.spawn(hurtbox.center);
+        return 1;
     }
+
+    return 0;
 }
 
 bool Goblin::active() const

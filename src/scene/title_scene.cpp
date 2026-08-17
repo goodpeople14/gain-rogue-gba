@@ -45,7 +45,7 @@ namespace
     };
 
     constexpr bn::array<bn::color, 16> glyph_colors = {
-        bn::color(0, 0, 0), bn::color(31, 28, 16), bn::color(), bn::color(),
+        bn::color(0, 0, 0), bn::color(31, 28, 16), bn::color(31, 0, 0), bn::color(12, 0, 0),
         bn::color(), bn::color(), bn::color(), bn::color(),
         bn::color(), bn::color(), bn::color(), bn::color(),
         bn::color(), bn::color(), bn::color(), bn::color()

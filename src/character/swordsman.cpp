@@ -4,6 +4,9 @@
 
 namespace
 {
+    constexpr CharacterDefinition samurai_definition = {
+        CharacterId::SAMURAI, "SAMURAI", 7, 3
+    };
     constexpr bn::fixed swordsman_movement_speed(1);
     constexpr Pushbox swordsman_body_pushbox = { { 0, 1, 8, 8 } };
     constexpr CollisionBody swordsman_collision_body = {
@@ -13,11 +16,14 @@ namespace
 
     static_assert(swordsman_body_pushbox.box.offset_y == 1);
     static_assert(swordsman_body_pushbox.box.width == 8 && swordsman_body_pushbox.box.height == 8);
+    static_assert(samurai_definition.id == CharacterId::SAMURAI);
+    static_assert(samurai_definition.display_name_length == 7);
+    static_assert(samurai_definition.max_hp == 3);
 }
 
 Swordsman::Swordsman(const bn::fixed_point& initial_position) :
     Character(bn::sprite_items::swordsman_8dir_sheet, initial_position, Direction::DOWN,
-              swordsman_movement_speed, swordsman_collision_body)
+              swordsman_movement_speed, swordsman_collision_body, samurai_definition)
 {
 }
 

@@ -27,19 +27,18 @@ public:
         DEAD
     };
 
-    static constexpr int max_hp = 1;
-
     Goblin(const bn::fixed_point& home_position, int target_id);
 
     void enter();
     void deactivate();
+    void hide();
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
     void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
-    void resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
-                            HitEffectManager& hit_effects);
+    [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
+                                         HitEffectManager& hit_effects);
 
     [[nodiscard]] bool active() const;
     [[nodiscard]] bool attack_active() const;

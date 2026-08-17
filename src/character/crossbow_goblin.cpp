@@ -14,6 +14,9 @@
 
 namespace
 {
+    constexpr CharacterDefinition crossbow_goblin_definition = {
+        CharacterId::CROSSBOW_GOBLIN, "CROSSBOW GOBLIN", 15, 1
+    };
     constexpr int home_radius = 28;
     // A ranged goblin must notice and retain a target beyond its 4-5 cell firing band.
     constexpr int discovery_distance = 96;
@@ -30,6 +33,10 @@ namespace
     constexpr int minimum_attack_distance = 64;
     constexpr int maximum_attack_distance = 80;
     constexpr int commit_distance = 72;
+
+    static_assert(crossbow_goblin_definition.id == CharacterId::CROSSBOW_GOBLIN);
+    static_assert(crossbow_goblin_definition.display_name_length == 15);
+    static_assert(crossbow_goblin_definition.max_hp == 1);
     constexpr int commit_cell_size = goblin_size;
     constexpr int commit_columns = 3;
     constexpr int commit_rows = 2;
@@ -184,7 +191,8 @@ namespace
 }
 
 CrossbowGoblin::CrossbowGoblin(const bn::fixed_point& home_position, int target_id) :
-    Character(bn::sprite_items::crossbow_goblin, home_position, Direction::DOWN, chase_speed, crossbow_collision_body),
+    Character(bn::sprite_items::crossbow_goblin, home_position, Direction::DOWN, chase_speed, crossbow_collision_body,
+              crossbow_goblin_definition),
     _home_position(home_position), _locked_target(home_position),
     _awareness_icon_tiles{{ bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(0),
                              bn::sprite_items::goblin_awareness_icons.tiles_item().create_tiles(1),
@@ -203,6 +211,7 @@ CrossbowGoblin::CrossbowGoblin(const bn::fixed_point& home_position, int target_
 
 void CrossbowGoblin::enter()
 {
+    reset_health();
     _state = State::ROAM; _state_timer = roam_direction_frames; _roam_direction_index = 0;
     _attack_direction = Direction::DOWN; _alignment_direction = Direction::DOWN; _locked_target = _home_position;
     _status_icon = StatusIcon::NONE;
@@ -216,6 +225,15 @@ void CrossbowGoblin::deactivate()
     _respawning = false;
     _respawn_timer = 0;
     _state = State::DEAD;
+    _set_telegraph_visible(false);
+    _set_recovery_hourglass_visible(false);
+    _status_icon = StatusIcon::NONE;
+    _status_icon_sprite.set_visible(false);
+    set_visible(false);
+}
+
+void CrossbowGoblin::hide()
+{
     _set_telegraph_visible(false);
     _set_recovery_hourglass_visible(false);
     _status_icon = StatusIcon::NONE;
@@ -266,8 +284,16 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const WorldBox& play
 
 void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
 {
-    if(_active && attack.try_hit(_target_id, position(), collision_body().hurtbox) > 0)
-    { hit_effects.spawn(world_hurtbox().center); _die(); }
+    int damage = _active ? attack.try_hit(_target_id, position(), collision_body().hurtbox) : 0;
+    if(damage > 0)
+    {
+        hit_effects.spawn(world_hurtbox().center);
+        take_damage(damage);
+        if(dead())
+        {
+            _die();
+        }
+    }
 }
 
 bool CrossbowGoblin::active() const { return _active; }

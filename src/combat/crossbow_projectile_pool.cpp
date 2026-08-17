@@ -79,9 +79,10 @@ void CrossbowProjectilePool::update()
     }
 }
 
-void CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_position,
-                                                 const Hurtbox& player_hurtbox, HitEffectManager& hit_effects)
+int CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_position,
+                                                const Hurtbox& player_hurtbox, HitEffectManager& hit_effects)
 {
+    int result = 0;
     WorldBox hurtbox = world_box(player_position, player_hurtbox.box);
     for(Slot& slot : _slots)
     {
@@ -91,9 +92,12 @@ void CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_po
             if(touches_or_intersects(landing_hitbox(slot.target), hurtbox))
             {
                 hit_effects.spawn(hurtbox.center);
+                ++result;
             }
         }
     }
+
+    return result;
 }
 
 void CrossbowProjectilePool::append_collision_debug_boxes(CollisionDebugBoxList& boxes) const
