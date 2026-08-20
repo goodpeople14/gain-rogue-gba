@@ -1,97 +1,177 @@
 # Gain Rogue GBA
 
-Gain Ground식 한 화면 전투에 로그라이크 강화와 보스 공략을 결합한 GBA 액션 게임 프로젝트입니다.
+Gain Ground식 전투를 기반으로 로그라이크 반복 구조를 더해 가는 Game Boy Advance 액션 게임 프로젝트입니다.
 
-## 프로젝트 목표
+Butano / C++로 실제 GBA ROM을 만들고, 기능을 작은 Issue 단위로 구현한 뒤 `make`, mGBA, 실제 화면 확인을 거쳐 확장합니다.
 
-두 캐릭터 중 하나를 선택해 적과 거리를 조절하며 싸우고, 위험한 출구를 돌파한 뒤 무작위 강화를 골라 보스까지 공략하는 10분 내외의 고전 판타지 로그라이크 액션 게임을 만드는 것이 목표입니다.
+## 현재 프로젝트 상태
 
-처음부터 모든 기능을 구현하지 않고, GBA에서 실제로 실행되는 작은 전투 단위부터 완성하고 검증하면서 확장합니다.
+현재 `main`은 초기 전투 실험 단계를 지나 **실제 근접/원거리 전투, Stage 진행, Spatial 기반 이동, Player HP/Death/HUD까지 구현된 상태**입니다.
 
-상세 기획과 범위의 기준은 [GitHub Issue #11](https://github.com/goodpeople14/gain-rogue-gba/issues/11)입니다. README와 다른 문서가 충돌하면 #11을 우선합니다.
-
-## 현재 구현 상태
-
-현재 `main`에는 다음 기반이 구현되어 있습니다.
-
-- Butano 기반 GBA 개발 환경과 ROM 빌드
-- mGBA 실행 확인
-- `GAIN ROGUE` 타이틀과 `PRESS START` 표시
-- START 입력을 통한 타이틀에서 게임 화면 전환
-- 좌측 UI 40px, 중앙 전장 160px, 우측 UI 40px의 한 화면 구조
-- 검사 캐릭터의 8방향 이동과 전장 경계 제한
-- 마지막으로 바라본 방향 저장
-- A 버튼 8방향 근접 공격
-- 프레임 기반 `Hitbox`와 `Hurtbox` 충돌
-- `Pushbox` 기반 이동 충돌
-- 허수아비 무작위 생성, 체력, 피격과 제거
-- 한 공격의 동일 대상 중복 피해 방지
-- 8방향 검사 참격 이펙트와 공통 피격 이펙트
-- 그래픽 생성·검증 도구와 프로젝트 작업 규칙
-
-현재 단계는 [M1 전투 실험장 #3](https://github.com/goodpeople14/gain-rogue-gba/issues/3)의 최종 검증 단계입니다. 실제 적 AI, 플레이어 체력, 스테이지 클리어와 로그라이크 반복은 아직 구현되지 않았습니다.
-
-## 목표 게임 흐름
-
-1. 캐릭터 2명 중 1명을 선택합니다.
-2. 일반 전장 1에서 적과 싸우거나 피해서 출구에 도달합니다.
-3. 무작위 강화 2개 중 1개를 선택합니다.
-4. 일반 전장 2를 플레이합니다.
-5. 무작위 강화 2개 중 1개를 선택합니다.
-6. 보스전을 진행합니다.
-7. 승리 또는 패배 결과를 확인합니다.
-8. 처음부터 다시 시작합니다.
-
-목표 플레이 시간은 약 10분입니다.
-
-## 첫 완성 범위
-
-- 서로 다른 특성을 가진 캐릭터 2명
-- 8방향 이동과 기본 공격
-- 일반 전장 2개
-- 근접 적, 고정 원거리 적, 순찰 적과 출구 수비 적
-- 출구 도달 방식의 전장 클리어
-- 적 처치 수에 따른 보상 품질과 회복 아이템
-- 무작위 강화 2개 중 1개 선택
-- 강화 효과 유지와 플레이 종료 시 초기화
-- 이동과 원거리 공격 패턴을 사용하는 보스
-- 플레이어 체력, 사망과 재시작
-- 승리·패배 결과 화면
-
-## 강화 예시
-
-- 공격력 증가
-- 이동속도 증가
-- 연사속도 증가
-- 체력 회복
-- 관통탄
-- 다중탄
-
-## 첫 작품 제외 범위
-
-- 장비와 인벤토리
-- 상점과 재화
-- 영구 성장
-- 세이브 데이터
-- 스토리 장면
-- 난이도 선택
-- 온라인 기능
-- 타일 단위 절차적 맵 생성
-- 수십 개의 캐릭터
-
-## 개발 단계
+완료된 큰 단계:
 
 - [x] [M0 개발 기반 확인 — #1](https://github.com/goodpeople14/gain-rogue-gba/issues/1)
-- [ ] [M1 전투 실험장 — #3](https://github.com/goodpeople14/gain-rogue-gba/issues/3) — 최종 검증 단계
-- [ ] [M2 첫 번째 전투 — #4](https://github.com/goodpeople14/gain-rogue-gba/issues/4)
-- [ ] [M3 출구 돌파 규칙 — #5](https://github.com/goodpeople14/gain-rogue-gba/issues/5)
-- [ ] [M4 로그라이크 반복 — #6](https://github.com/goodpeople14/gain-rogue-gba/issues/6)
-- [ ] [M5 캐릭터와 전장 확장 — #7](https://github.com/goodpeople14/gain-rogue-gba/issues/7)
-- [ ] [M6 보스와 엔딩 — #8](https://github.com/goodpeople14/gain-rogue-gba/issues/8)
-- [ ] [M7 공격 방식과 완성도 확장 — #9](https://github.com/goodpeople14/gain-rogue-gba/issues/9)
-- [ ] [M8 배포 준비 — #10](https://github.com/goodpeople14/gain-rogue-gba/issues/10)
+- [x] [M1 전투 실험장 — #3](https://github.com/goodpeople14/gain-rogue-gba/issues/3)
+- [x] [M2 첫 번째 전투 — #4](https://github.com/goodpeople14/gain-rogue-gba/issues/4)
+- [x] [M3 출구 돌파 규칙 — #5](https://github.com/goodpeople14/gain-rogue-gba/issues/5)
 
-각 단계의 세부 범위와 완료 여부는 해당 이슈에서 관리합니다. 실제 ROM에서 완료 기준을 확인한 뒤 단계를 닫습니다.
+다음 핵심 단계는 [M4 로그라이크 반복 — #6](https://github.com/goodpeople14/gain-rogue-gba/issues/6)입니다.
+
+## 현재 구현된 기능
+
+### Player
+
+- 16×16 기반 8방향 Samurai Sprite
+- 8방향 자유 이동
+- 마지막 바라본 방향 유지
+- A 버튼 8방향 근접 공격
+- 방향별 Slash Effect
+- Player HP 3
+- `SAMURAI` 이름 + 고정 HP HUD
+- 피격 / 사망 처리
+- HP 0 시 `YOU DIED` 표시 후 Title로 복귀
+- 새 Run 시작 시 HP와 전투 상태 초기화
+
+### Enemy / Combat
+
+- 근접 Goblin AI
+- Crossbow Goblin 원거리 공격
+- Hitbox / Hurtbox / Pushbox 분리
+- Projectile 충돌
+- 공통 Hit Effect
+- Enemy Health 기반 Damage / Death 처리
+- 일반 Goblin / Crossbow Goblin HP 1 유지
+- 다수 Goblin 독립 행동과 상호 Pushbox
+- Enemy 상태 아이콘 및 Telegraph / Recovery 표현
+- 전투 종료 / Scene 전환 시 transient effect 정리
+
+### Stage / Spatial
+
+- 실제 Stage1 Background asset
+- Stage 진행 흐름
+- Stage Intro / READY / GO / PLAYING / CLEARED 상태
+- Stage 종료 후 다음 Stage 진행
+- Stage2 battlefield skeleton
+- `SpatialManager` 기반 위치 / 주변 후보 조회
+- 8×8 cell 기반 broad-phase 공간 조회
+- 지역 Cell 범위 조회 최적화
+- `SpatialLayer { GROUND, UPPER }` 기반 floor-aware movement
+- Character / Enemy 이동 시 Spatial / Pushbox 계약 적용
+
+### Graphics / GBA Resource
+
+- OBJ BPP4 palette exhaustion 문제 수정
+- Sprite Palette Harness 적용
+- Character Sprite Editing Harness 적용
+- Samurai 8방향 production asset 검증 도구
+- direction / palette / baseline / center / silhouette 검증
+- 생성 이미지와 실제 GBA production asset 편집 과정을 분리
+
+## 현재 구조 방향
+
+현재 게임은 한 번에 범용 엔진을 만드는 대신 실제 게임 기능을 먼저 만들고, 반복해서 필요한 책임만 구조로 승격합니다.
+
+주요 원칙:
+
+```text
+SpatialManager
+= 위치 / 주변 후보 / 공간 정보 제공
+= 게임 상태를 직접 변경하지 않음
+
+Character / Combat / Game logic
+= Damage / Health / Death / Effect 의미 처리
+```
+
+장기 구조는 다음 방향을 검토 중입니다.
+
+```text
+Game
+├─ GameSession        # Run 진행 상태
+├─ AudioSystem        # 실제 사운드 도입 시
+├─ SaveSystem         # 저장 상태가 생길 때
+└─ Scene
+   ├─ TitleScene
+   └─ GameScene
+       └─ AreaRuntime
+          └─ EncounterRuntime (필요할 때)
+```
+
+아직 필요하지 않은 Manager / ECS / 범용 Event framework는 선도입하지 않습니다.
+
+## 다음 작업 후보
+
+현재 가장 자연스러운 다음 Gameplay 범위는 M4입니다.
+
+```text
+전투
+→ Stage Clear
+→ 무작위 강화 선택
+→ 다음 Stage
+→ 강화 유지
+→ Death 시 Run 초기화
+```
+
+구체적으로는:
+
+- 무작위 강화 선택 UI
+- 공격력 / 이동속도 등 최소 Upgrade
+- 회복 선택지
+- Stage 간 Upgrade 유지
+- Death 시 Upgrade 초기화
+- 최소 2~3 Stage Run 흐름 연결
+
+을 작은 단위로 구현할 예정입니다.
+
+## 장기 아이디어 / 아직 확정하지 않은 것
+
+다음 항목은 설계 아이디어 또는 후속 검토 대상이며 현재 production 기능으로 보지 않습니다.
+
+- `PlayableCharacter / EnemyCharacter` 중간 계층
+- Character 교체 / Tag Team
+- Leader + Assist Squad
+- Team shared HP
+- Elite / Boss 전용 고정 HP HUD
+- Camera scroll / 큰 World map
+- AudioSystem / SaveSystem
+- Character Animation Harness
+
+특히 Walk / Attack / Hit animation 제작법은 아직 검증된 공통 Harness로 등록하지 않았습니다.
+
+## 문서와 하네스
+
+프로젝트 작업 시 다음 문서를 기준으로 합니다.
+
+- [작업 절차](docs/workflow.md)
+- [현재 구조](docs/architecture.md)
+- [전투 규칙](docs/combat-rules.md)
+- [충돌 규칙](docs/collision-rules.md)
+- [그래픽 규칙](docs/graphics-rules.md)
+- [GBA Sprite Palette Harness](docs/gba-sprite-palette.md)
+- [GBA Character Sprite Editing Harness](docs/gba-character-sprite-editing.md)
+- [설계 결정 기록](docs/decisions/)
+- [개발 Journal](docs/journal/)
+
+초기 게임 기획은 [Issue #11](https://github.com/goodpeople14/gain-rogue-gba/issues/11)에 남아 있습니다. 다만 구현 과정에서 일부 방향이 발전했으므로 **현재 코드, 열린 Issue, 결정 문서와 Harness를 최신 상태의 우선 근거로 사용합니다.**
+
+## 개발 방식
+
+기본 흐름:
+
+```text
+Issue에서 목표 / 완료 조건 정의
+→ 관련 Harness / Decision 확인
+→ 기능 브랜치 생성
+→ 구현
+→ 자동 검증
+→ make -j2
+→ 필요 시 clean build
+→ mGBA 확인
+→ PR 검토
+→ main merge
+→ Issue 완료
+```
+
+기능을 만든 뒤 반복해서 얻은 교훈은 `docs/journal/`에 남기고, 재사용 가치가 검증된 규칙만 Harness로 승격합니다.
 
 ## 개발 환경
 
@@ -124,7 +204,10 @@ C:\gba-dev\
    ├─ Makefile
    ├─ README.md
    ├─ include\
-   └─ src\
+   ├─ src\
+   ├─ graphics\
+   ├─ tools\
+   └─ docs\
 ```
 
 ```makefile
@@ -135,83 +218,44 @@ LIBBUTANO := ../butano/butano
 
 ## 빌드 방법
 
-프로젝트 루트에서 실행합니다.
+프로젝트 루트에서:
 
 ```bash
 cd C:/gba-dev/gain-rogue-gba
 make -j2
 ```
 
-정상적으로 완료되면 프로젝트 루트에 `gain-rogue-gba.gba`가 생성됩니다.
+정상적으로 완료되면 프로젝트 루트에 ROM이 생성됩니다.
 
-처음부터 다시 확인하려면 clean build를 실행합니다.
+처음부터 다시 검증하려면:
 
 ```bash
 make clean
 make -j2
 ```
 
-`build/`, `.gba`, `.elf` 파일은 빌드 산출물이므로 Git에 커밋하지 않습니다.
+`build/`, `.gba`, `.elf`, emulator save/state 파일은 Git에 커밋하지 않습니다.
 
-## mGBA 실행 및 M1 확인
+## mGBA 확인
 
-1. mGBA를 실행합니다.
-2. `File → Load ROM`을 선택합니다.
-3. `C:\gba-dev\gain-rogue-gba\gain-rogue-gba.gba`를 엽니다.
-4. 다음 동작을 확인합니다.
+현재 main에서 최소 다음 흐름을 확인할 수 있습니다.
 
-- 실행 직후 타이틀 화면이 유지됩니다.
-- START를 누르면 중앙 전장으로 전환됩니다.
-- 검사 캐릭터가 8방향으로 이동하고 전장 밖으로 나가지 않습니다.
-- A 버튼을 누르면 마지막으로 바라본 방향으로 공격합니다.
-- 방향에 맞는 참격 이펙트와 공격 판정이 표시됩니다.
-- 허수아비가 피해를 받고 체력이 0이 되면 제거됩니다.
-- 공격이 적중한 위치에 공통 피격 이펙트가 표시됩니다.
-- 허수아비가 플레이어와 겹치지 않는 위치에 다시 생성됩니다.
+1. Title에서 START
+2. Samurai 8방향 이동
+3. Goblin / Crossbow Goblin과 전투
+4. Slash / Projectile / Hit Effect 확인
+5. Player HP 감소
+6. HP 0 시 `YOU DIED`
+7. Title 복귀
+8. 새 게임 시작 시 상태 초기화
+9. Stage 진행 및 Stage 전환 확인
 
-## 반복 개발 절차
+Debug 기능을 사용할 때는 Palette / Collision Debug Overlay가 기존 Gameplay와 충돌하지 않는지도 함께 확인합니다.
 
-```text
-이슈에서 범위와 완료 기준 확인
-→ 관련 프로젝트 규칙 확인
-→ 기능 브랜치에서 구현
-→ make -j2
-→ mGBA에서 ROM 실행
-→ git diff 확인
-→ PR 검토와 main 병합
-→ 이슈 체크리스트 갱신
-```
+## 프로젝트 목표
 
-빌드 환경이나 생성 자산까지 다시 검증할 때는 `make clean`을 먼저 실행합니다.
+첫 번째 목표는 거대한 엔진이 아니라 **GBA에서 실제로 처음부터 끝까지 플레이 가능한 작은 게임**을 만드는 것입니다.
 
-## 문제 해결
+현재는 전투 기반과 Stage 기반을 확보했으며, 다음 단계에서 로그라이크 선택과 Run 반복을 연결해 vertical slice를 완성하는 방향으로 진행합니다.
 
-### mGBA 실행 중 make clean이 실패하는 경우
-
-실행 중인 mGBA가 ROM 파일을 사용하고 있을 수 있습니다.
-
-1. mGBA를 종료합니다.
-2. 작업 관리자에서 mGBA 프로세스가 남아 있지 않은지 확인합니다.
-3. 다시 clean build를 실행합니다.
-
-### VS Code에서 Butano 헤더를 찾지 못하는 경우
-
-`make`는 성공하지만 `bn_core.h` 같은 헤더 오류가 표시되면 IntelliSense 경로 문제일 가능성이 큽니다.
-
-```text
-C:/gba-dev/butano/butano/include
-C:/gba-dev/butano/butano/hw/include
-C:/gba-dev/butano/butano/hw/3rd_party/libtonc/include
-```
-
-프로젝트를 다른 위치에 설치했다면 실제 Butano 위치에 맞게 변경합니다.
-
-## 최종 완료 조건
-
-- mGBA에서 캐릭터 선택부터 보스전과 결과 화면까지 정상 진행됩니다.
-- 한 판이 약 10분 안에 끝납니다.
-- 두 캐릭터의 플레이 감각이 구분됩니다.
-- 일반 전장 2회, 강화 선택 2회와 보스전이 연결됩니다.
-- 사망과 재도전 흐름이 정상 동작합니다.
-- 지인이 별도 설명 없이 플레이할 수 있습니다.
-- 소스, ROM, 빌드와 조작 설명을 GitHub에 공개할 수 있습니다.
+장기적으로는 이 과정에서 검증된 구조와 Harness를 다음 GBA 게임에도 재사용할 수 있는 수준으로 축적하는 것을 목표로 합니다.
