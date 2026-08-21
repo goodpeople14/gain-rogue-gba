@@ -11,6 +11,8 @@ enum class CollisionDebugBoxType
     HITBOX,
     PUSHBOX,
     COMMIT_BOX,
+    RANGED_COMMIT_BOX,
+    FLEE_BOX,
     STATIC_OBSTACLE
 };
 
@@ -23,12 +25,11 @@ struct CollisionDebugBox
 class CollisionDebugBoxList
 {
 public:
-    // Stage1's maximum: player (2 + two melee hitboxes), four melee goblins
-    // (3 each), one active crossbow goblin (two bodies plus six directional
-    // Commit cells), every landing slot in its four-arrow pool, and the rock.
-    // Stage2 has four crossbows, so it omits their commit-cell preview to stay
-    // within the GBA OBJ budget while retaining their body boxes.
-    static constexpr int capacity = 29;
+    // Conservative normal-scene maximum: player (2 + two melee hitboxes),
+    // four melee goblins (3 each), four Crossbow body pairs, one focused
+    // Crossbow's two ranged spacing boxes, every landing slot in the
+    // four-arrow pool, and the Stage1 rock. Inactive actors are skipped.
+    static constexpr int capacity = 31;
 
     bool add(const WorldBox& box, CollisionDebugBoxType type)
     {
