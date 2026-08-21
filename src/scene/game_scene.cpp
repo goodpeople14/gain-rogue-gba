@@ -371,8 +371,8 @@ namespace
     static_assert(stage2_spawn_cell_is_walkable(stage2::upper_data, stage2::crossbow_spawns[3]));
     static_assert(stage2_same_layer_spawns_are_separated());
     static_assert(! stage_enemy_respawn_enabled);
-    static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 8 +
-                  CrossbowProjectilePool::capacity + stage1::static_obstacle_count ==
+    static_assert(2 + max_hitboxes_per_frame + (GameScene::goblin_count * 3) + 10 +
+                  CrossbowProjectilePool::capacity + stage1::static_obstacle_count <=
                   CollisionDebugBoxList::capacity);
     static_assert(stage_phase_after_ticks(intro_frames - 1) ==
                   GameScene::StagePhase::INTRO);
@@ -889,10 +889,15 @@ void GameScene::_update_collision_debug_overlay()
     {
         goblin.append_collision_debug_boxes(player_hurtbox, boxes);
     }
-    bool include_crossbow_commit_boxes = _stage == StageId::STAGE_1;
+    bool ranged_spacing_focus_available = true;
     for(const CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
     {
-        crossbow_goblin.append_collision_debug_boxes(player_hurtbox, boxes, include_crossbow_commit_boxes);
+        bool include_ranged_spacing_boxes = ranged_spacing_focus_available && crossbow_goblin.active();
+        crossbow_goblin.append_collision_debug_boxes(boxes, include_ranged_spacing_boxes);
+        if(include_ranged_spacing_boxes)
+        {
+            ranged_spacing_focus_available = false;
+        }
     }
     _crossbow_projectiles.append_collision_debug_boxes(boxes);
     _collision_debug_overlay.update(boxes);

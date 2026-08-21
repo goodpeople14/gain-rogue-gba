@@ -21,7 +21,12 @@ namespace
         case CollisionDebugBoxType::PUSHBOX:
             return bn::sprite_items::collision_debug_push_corner;
         case CollisionDebugBoxType::COMMIT_BOX:
+        case CollisionDebugBoxType::RANGED_COMMIT_BOX:
             return bn::sprite_items::collision_debug_commit_corner;
+        case CollisionDebugBoxType::FLEE_BOX:
+            // Reuse the yellow movement-boundary corner. The debug type keeps
+            // this spacing policy distinct from a physical Pushbox.
+            return bn::sprite_items::collision_debug_push_corner;
         case CollisionDebugBoxType::STATIC_OBSTACLE:
             return bn::sprite_items::collision_debug_static_obstacle_corner;
         default:
