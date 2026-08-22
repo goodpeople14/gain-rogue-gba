@@ -17,11 +17,13 @@ class CrossbowProjectilePool
 public:
     static constexpr int capacity = 4;
 
-    void spawn(const bn::fixed_point& start, const bn::fixed_point& target);
+    // The source is a value identity only; projectile lifetime remains independent
+    // from the firing Enemy instance.
+    void spawn(int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target);
     void update();
     [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
                                          HitEffectManager& hit_effects);
-    void append_collision_debug_boxes(CollisionDebugBoxList& boxes) const;
+    void append_collision_debug_boxes(int source_actor_id, CollisionDebugBoxList& boxes) const;
     void clear();
 
     [[nodiscard]] int active_count() const;
@@ -32,6 +34,7 @@ private:
         bn::optional<bn::sprite_ptr> sprite;
         bn::fixed_point start;
         bn::fixed_point target;
+        int source_actor_id = 0;
         int ticks = 0;
         bool landing = false;
         bool hit_resolved = false;

@@ -28,8 +28,8 @@ namespace
     constexpr int return_question_frames = 21;
     constexpr int respawn_delay_ticks = 120;
     constexpr int goblin_size = 16;
-    constexpr int flee_box_half_extent = 48;
-    constexpr int ranged_commit_box_half_extent = 72;
+    constexpr int flee_radius = 48;
+    constexpr int ranged_commit_radius = 72;
 
     static_assert(crossbow_goblin_definition.id == CharacterId::CROSSBOW_GOBLIN);
     static_assert(crossbow_goblin_definition.display_name_length == 15);
@@ -54,12 +54,6 @@ namespace
         RETREAT
     };
 
-    struct RangedSpacingBoxes
-    {
-        WorldBox commit;
-        WorldBox flee;
-    };
-
     struct RangedAttackTick
     {
         CrossbowGoblin::State next_state;
@@ -81,25 +75,16 @@ namespace
         return horizontal < 0 ? Direction::LEFT : Direction::RIGHT;
     }
 
-    [[nodiscard]] constexpr RangedSpacingBoxes ranged_spacing_boxes(const bn::fixed_point& position)
-    {
-        return {
-            { position, ranged_commit_box_half_extent * 2, ranged_commit_box_half_extent * 2 },
-            { position, flee_box_half_extent * 2, flee_box_half_extent * 2 }
-        };
-    }
-
     [[nodiscard]] constexpr RangedDecision ranged_decision(
-            const RangedSpacingBoxes& boxes, const bn::fixed_point& player_position)
+            const bn::fixed_point& enemy_foot, const bn::fixed_point& player_foot)
     {
-        WorldBox player_point = { player_position, 0, 0 };
         // The Flee boundary itself belongs to HOLD, so only its strict interior retreats.
-        if(overlaps_strictly(boxes.flee, player_point))
+        if(Enemy::within_distance_strict(enemy_foot, player_foot, flee_radius))
         {
             return RangedDecision::RETREAT;
         }
 
-        if(touches_or_intersects(boxes.commit, player_point))
+        if(Enemy::within_distance(enemy_foot, player_foot, ranged_commit_radius))
         {
             return RangedDecision::HOLD;
         }
@@ -173,30 +158,19 @@ namespace
         return { position.x(), y < -70 ? -70 : y };
     }
 
-    constexpr RangedSpacingBoxes test_ranged_spacing_boxes = ranged_spacing_boxes({ 0, 0 });
-    static_assert(test_ranged_spacing_boxes.commit.width == ranged_commit_box_half_extent * 2);
-    static_assert(test_ranged_spacing_boxes.flee.width == flee_box_half_extent * 2);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { 0, 0 }) == RangedDecision::RETREAT);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { flee_box_half_extent - 1, 0 }) ==
+    static_assert(ranged_decision({ 0, 0 }, { 0, 0 }) == RangedDecision::RETREAT);
+    static_assert(ranged_decision({ 0, 0 }, { flee_radius - 1, 0 }) ==
                   RangedDecision::RETREAT);
-    static_assert(ranged_decision(test_ranged_spacing_boxes,
-                                  { -(flee_box_half_extent - 1), -(flee_box_half_extent - 1) }) ==
-                  RangedDecision::RETREAT);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { flee_box_half_extent, 0 }) == RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { 0, flee_box_half_extent }) == RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes,
-                                  { flee_box_half_extent, flee_box_half_extent }) == RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { ranged_commit_box_half_extent, 0 }) ==
+    static_assert(ranged_decision({ 0, 0 }, { 40, 40 }) == RangedDecision::HOLD);
+    static_assert(ranged_decision({ 0, 0 }, { flee_radius, 0 }) == RangedDecision::HOLD);
+    static_assert(ranged_decision({ 0, 0 }, { flee_radius + 1, 0 }) == RangedDecision::HOLD);
+    static_assert(ranged_decision({ 0, 0 }, { ranged_commit_radius, 0 }) ==
                   RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes,
-                                  { ranged_commit_box_half_extent, ranged_commit_box_half_extent }) ==
-                  RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes,
-                                  { -ranged_commit_box_half_extent, -ranged_commit_box_half_extent }) ==
-                  RangedDecision::HOLD);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { ranged_commit_box_half_extent + 1, 0 }) ==
+    static_assert(ranged_decision({ 0, 0 }, { ranged_commit_radius, ranged_commit_radius }) ==
                   RangedDecision::APPROACH);
-    static_assert(ranged_decision(test_ranged_spacing_boxes, { 0, ranged_commit_box_half_extent + 1 }) ==
+    static_assert(ranged_decision({ 0, 0 }, { ranged_commit_radius + 1, 0 }) ==
+                  RangedDecision::APPROACH);
+    static_assert(ranged_decision({ 0, 0 }, { 0, ranged_commit_radius + 1 }) ==
                   RangedDecision::APPROACH);
     static_assert(direction_from_components(-1, -1, Direction::DOWN) == Direction::UP_LEFT);
     static_assert(direction_from_components(0, -1, Direction::DOWN) == Direction::UP);
@@ -219,8 +193,11 @@ namespace
     static_assert(ranged_attack_lifecycle_is_stable());
     static_assert(Enemy::within_distance({ 0, 0 }, { discovery_distance, 0 }, discovery_distance));
     static_assert(! Enemy::within_distance({ 0, 0 }, { discovery_distance + 1, 0 }, discovery_distance));
+    static_assert(Enemy::within_distance({ 0, 0 }, { 67, 67 }, discovery_distance));
+    static_assert(! Enemy::within_distance({ 0, 0 }, { 68, 68 }, discovery_distance));
     static_assert(Enemy::within_distance({ 0, 0 }, { disengage_distance, 0 }, disengage_distance));
     static_assert(! Enemy::within_distance({ 0, 0 }, { disengage_distance + 1, 0 }, disengage_distance));
+    static_assert(world_foot_position({ 0, 0 }, crossbow_body_pushbox) == bn::fixed_point(0, 6));
 }
 
 CrossbowGoblin::CrossbowGoblin(const bn::fixed_point& home_position, int target_id) :
@@ -271,7 +248,7 @@ void CrossbowGoblin::hide()
     hide_enemy();
 }
 
-void CrossbowGoblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
                              const WorldBoxList<max_movement_obstacles>& blockers, CrossbowProjectilePool& projectiles)
 {
     if(! active())
@@ -286,11 +263,11 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const WorldBox& play
     switch(_state)
     {
     case State::ROAM:
-        if(within_distance(position(), player_pushbox.center, discovery_distance))
+        if(within_distance(foot_position(), player_foot_position, discovery_distance))
         { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); }
         else _update_roam(blockers);
         break;
-    case State::CHASE: _update_chase(player_hurtbox, blockers); break;
+    case State::CHASE: _update_chase(player_hurtbox, player_foot_position, blockers); break;
     case State::TELEGRAPH: _update_telegraph(player_hurtbox, projectiles); break;
     case State::RECOVERY:
     {
@@ -304,7 +281,7 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const WorldBox& play
         }
         break;
     }
-    case State::RETURN: _update_return(player_pushbox, blockers); break;
+    case State::RETURN: _update_return(player_foot_position, blockers); break;
     case State::DEAD: break;
     default: break;
     }
@@ -325,17 +302,16 @@ void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectMan
     }
 }
 
-void CrossbowGoblin::append_collision_debug_boxes(
-        CollisionDebugBoxList& boxes, bool include_ranged_spacing_boxes) const
+void CrossbowGoblin::append_debug_shapes(
+        CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const
 {
     if(! active()) return;
     boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX); boxes.add(world_pushbox(), CollisionDebugBoxType::PUSHBOX);
-    if(include_ranged_spacing_boxes)
-    {
-        RangedSpacingBoxes spacing_boxes = ranged_spacing_boxes(position());
-        boxes.add(spacing_boxes.commit, CollisionDebugBoxType::RANGED_COMMIT_BOX);
-        boxes.add(spacing_boxes.flee, CollisionDebugBoxType::FLEE_BOX);
-    }
+    bn::fixed_point center = foot_position();
+    radii.add(center, discovery_distance, CollisionDebugRadiusType::DISCOVERY);
+    radii.add(center, disengage_distance, CollisionDebugRadiusType::DISENGAGE);
+    radii.add(center, ranged_commit_radius, CollisionDebugRadiusType::RANGED_COMMIT);
+    radii.add(center, flee_radius, CollisionDebugRadiusType::FLEE);
 }
 
 void CrossbowGoblin::_update_roam(const WorldBoxList<max_movement_obstacles>& blockers)
@@ -344,9 +320,12 @@ void CrossbowGoblin::_update_roam(const WorldBoxList<max_movement_obstacles>& bl
     if(--_state_timer == 0) { _roam_direction_index = (_roam_direction_index + 1) % roam_directions.size(); _state_timer = roam_direction_frames; }
 }
 
-void CrossbowGoblin::_update_chase(const WorldBox& player_hurtbox, const WorldBoxList<max_movement_obstacles>& blockers)
+void CrossbowGoblin::_update_chase(
+        const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+        const WorldBoxList<max_movement_obstacles>& blockers)
 {
-    if(! within_distance(position(), player_hurtbox.center, disengage_distance))
+    bn::fixed_point own_foot_position = foot_position();
+    if(! within_distance(own_foot_position, player_foot_position, disengage_distance))
     {
         reset_local_avoidance();
         _state = State::RETURN;
@@ -355,16 +334,15 @@ void CrossbowGoblin::_update_chase(const WorldBox& player_hurtbox, const WorldBo
         return;
     }
 
-    RangedSpacingBoxes spacing_boxes = ranged_spacing_boxes(position());
     bn::fixed horizontal = player_hurtbox.center.x() - position().x();
     bn::fixed vertical = player_hurtbox.center.y() - position().y();
-    switch(ranged_decision(spacing_boxes, player_hurtbox.center))
+    switch(ranged_decision(own_foot_position, player_foot_position))
     {
     case RangedDecision::RETREAT:
     {
-        Direction retreat_direction = direction_toward(player_hurtbox.center, position(), direction());
+        Direction retreat_direction = direction_toward(player_foot_position, own_foot_position, direction());
         move_toward_with_local_avoidance(
-                position() + directional_offset(retreat_direction, ranged_commit_box_half_extent),
+                position() + directional_offset(retreat_direction, ranged_commit_radius),
                 chase_speed, blockers);
         return;
     }
@@ -373,7 +351,7 @@ void CrossbowGoblin::_update_chase(const WorldBox& player_hurtbox, const WorldBo
         _start_attack(direction_from_components(sign(horizontal), sign(vertical), direction()));
         return;
     case RangedDecision::APPROACH:
-        move_toward_with_local_avoidance(player_hurtbox.center, chase_speed, blockers);
+        move_toward_with_local_avoidance(player_foot_position, chase_speed, blockers);
         return;
     default:
         return;
@@ -396,15 +374,18 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
     if(tick.spawn_projectile)
     {
         int horizontal; int vertical; direction_components(_attack_direction, horizontal, vertical);
-        projectiles.spawn({ position().x() + horizontal * 6, position().y() + vertical * 6 }, _locked_target);
+        // actor_id() is a stable value identity, not an owner pointer.
+        projectiles.spawn(actor_id(), { position().x() + horizontal * 6, position().y() + vertical * 6 },
+                          _locked_target);
         _set_telegraph_visible(false); _status_icon_frame = 0;
         _set_recovery_hourglass_visible(true);
     }
 }
 
-void CrossbowGoblin::_update_return(const WorldBox& player_pushbox, const WorldBoxList<max_movement_obstacles>& blockers)
+void CrossbowGoblin::_update_return(
+        const bn::fixed_point& player_foot_position, const WorldBoxList<max_movement_obstacles>& blockers)
 {
-    if(within_distance(position(), player_pushbox.center, discovery_distance))
+    if(within_distance(foot_position(), player_foot_position, discovery_distance))
     { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); return; }
     if(within_distance(position(), home_position(), 1))
     { _state = State::ROAM; _state_timer = roam_direction_frames; _status_icon_timer = 0; _set_telegraph_visible(false); return; }

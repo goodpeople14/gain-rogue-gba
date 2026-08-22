@@ -32,7 +32,7 @@ public:
     void enter();
     void deactivate();
     void hide();
-    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,
+    void update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
     [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
@@ -40,7 +40,8 @@ public:
 
     [[nodiscard]] bool attack_active() const;
     [[nodiscard]] State state() const;
-    void append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const;
+    void append_debug_shapes(
+            CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const final;
 
 private:
     enum class StatusIcon
@@ -53,12 +54,12 @@ private:
     };
 
     void _update_roam(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
-    void _update_chase(const WorldBox& player_hurtbox,
+    void _update_chase(const bn::fixed_point& player_foot_position,
                        const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _update_telegraph();
     void _update_active();
     void _update_recovery();
-    void _update_return(const WorldBox& player_pushbox,
+    void _update_return(const bn::fixed_point& player_foot_position,
                         const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _start_attack(Direction direction);
     void _finish_attack();

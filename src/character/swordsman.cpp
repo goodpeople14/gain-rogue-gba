@@ -16,6 +16,7 @@ namespace
 
     static_assert(swordsman_body_pushbox.box.offset_y == 1);
     static_assert(swordsman_body_pushbox.box.width == 8 && swordsman_body_pushbox.box.height == 8);
+    static_assert(world_foot_position({ 0, 0 }, swordsman_body_pushbox) == bn::fixed_point(0, 5));
     static_assert(samurai_definition.id == CharacterId::SAMURAI);
     static_assert(samurai_definition.display_name_length == 7);
     static_assert(samurai_definition.max_hp == 3);

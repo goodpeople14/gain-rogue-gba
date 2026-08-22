@@ -22,20 +22,23 @@ public:
     void enter();
     void deactivate();
     void hide();
-    void update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox,
+    void update(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                 CrossbowProjectilePool& projectiles);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
 
-    void append_collision_debug_boxes(CollisionDebugBoxList& boxes, bool include_ranged_spacing_boxes) const;
+    void append_debug_shapes(
+            CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const final;
 
 private:
     enum class StatusIcon { NONE, DISCOVERY_FLASH, TELEGRAPH, RECOVERY_HOURGLASS, RETURN_QUESTION };
 
     void _update_roam(const WorldBoxList<max_movement_obstacles>& blockers);
-    void _update_chase(const WorldBox& player_hurtbox, const WorldBoxList<max_movement_obstacles>& blockers);
+    void _update_chase(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+                       const WorldBoxList<max_movement_obstacles>& blockers);
     void _update_telegraph(const WorldBox& player_hurtbox, CrossbowProjectilePool& projectiles);
-    void _update_return(const WorldBox& player_pushbox, const WorldBoxList<max_movement_obstacles>& blockers);
+    void _update_return(const bn::fixed_point& player_foot_position,
+                        const WorldBoxList<max_movement_obstacles>& blockers);
     void _start_attack(Direction direction);
     void _die();
     void _set_telegraph_visible(bool visible);

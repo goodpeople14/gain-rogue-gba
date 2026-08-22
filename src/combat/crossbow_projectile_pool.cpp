@@ -27,12 +27,20 @@ namespace
         return world_box(target, landing_collision_box);
     }
 
+    [[nodiscard]] constexpr bool matches_debug_source(int slot_source_actor_id, int selected_actor_id)
+    {
+        return slot_source_actor_id == selected_actor_id;
+    }
+
     static_assert(height_offset(0) == 0);
     static_assert(height_offset(flight_frames / 2) == peak_height);
     static_assert(height_offset(flight_frames) == 0);
+    static_assert(matches_debug_source(14, 14));
+    static_assert(! matches_debug_source(14, 15));
 }
 
-void CrossbowProjectilePool::spawn(const bn::fixed_point& start, const bn::fixed_point& target)
+void CrossbowProjectilePool::spawn(
+        int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target)
 {
     for(Slot& slot : _slots)
     {
@@ -42,6 +50,7 @@ void CrossbowProjectilePool::spawn(const bn::fixed_point& start, const bn::fixed
             slot.sprite->set_z_order(-1);
             slot.start = start;
             slot.target = target;
+            slot.source_actor_id = source_actor_id;
             slot.ticks = 0;
             slot.landing = false;
             slot.hit_resolved = false;
@@ -100,11 +109,12 @@ int CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_pos
     return result;
 }
 
-void CrossbowProjectilePool::append_collision_debug_boxes(CollisionDebugBoxList& boxes) const
+void CrossbowProjectilePool::append_collision_debug_boxes(
+        int source_actor_id, CollisionDebugBoxList& boxes) const
 {
     for(const Slot& slot : _slots)
     {
-        if(slot.sprite && slot.landing)
+        if(slot.sprite && matches_debug_source(slot.source_actor_id, source_actor_id) && slot.landing)
         {
             boxes.add(landing_hitbox(slot.target), CollisionDebugBoxType::HITBOX);
         }
@@ -119,6 +129,7 @@ void CrossbowProjectilePool::clear()
         slot.ticks = 0;
         slot.landing = false;
         slot.hit_resolved = false;
+        slot.source_actor_id = 0;
     }
 }
 

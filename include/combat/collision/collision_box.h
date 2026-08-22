@@ -38,4 +38,11 @@ struct Pushbox
     return { position + bn::fixed_point(box.offset_x, box.offset_y), box.width, box.height };
 }
 
+[[nodiscard]] constexpr bn::fixed_point world_foot_position(
+        const bn::fixed_point& position, const Pushbox& pushbox)
+{
+    WorldBox body = world_box(position, pushbox.box);
+    return { body.center.x(), body.center.y() + bn::fixed(body.height) / 2 };
+}
+
 #endif

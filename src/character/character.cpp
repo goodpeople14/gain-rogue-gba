@@ -55,6 +55,11 @@ bn::fixed_point Character::position() const
     return _sprite.position();
 }
 
+bn::fixed_point Character::foot_position() const
+{
+    return world_foot_position(position(), _collision_body.pushbox);
+}
+
 const CollisionBody& Character::collision_body() const
 {
     return _collision_body;
