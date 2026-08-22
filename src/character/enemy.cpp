@@ -149,6 +149,11 @@ bool Enemy::active() const
     return _active;
 }
 
+int Enemy::actor_id() const
+{
+    return _target_id;
+}
+
 WorldBox Enemy::world_hurtbox() const
 {
     return world_box(position(), collision_body().hurtbox.box);

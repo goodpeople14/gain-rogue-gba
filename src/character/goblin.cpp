@@ -28,7 +28,10 @@ namespace
     constexpr int discovery_bulb_white_frames = 10;
     constexpr int return_question_frames = 21;
     constexpr int respawn_delay_ticks = 120;
-    constexpr int commit_margin = 2;
+    // The former directional commit rectangles reached at most sqrt(19^2 + 19^2)
+    // pixels between the Goblin and Samurai foot anchors. Round that up so the
+    // initial 360-degree radius preserves the old maximum start distance.
+    constexpr int melee_commit_radius = 27;
     constexpr int goblin_size = 16;
 
     static_assert(goblin_definition.id == CharacterId::GOBLIN);
@@ -150,23 +153,23 @@ namespace
     static_assert(attack_direction_tests());
     static_assert(Enemy::within_distance({ 0, 0 }, { discovery_distance, 0 }, discovery_distance));
     static_assert(! Enemy::within_distance({ 0, 0 }, { discovery_distance + 1, 0 }, discovery_distance));
+    static_assert(Enemy::within_distance({ 0, 0 }, { 29, 29 }, discovery_distance));
+    static_assert(! Enemy::within_distance({ 0, 0 }, { 30, 30 }, discovery_distance));
     static_assert(Enemy::within_distance({ 0, 0 }, { disengage_distance, 0 }, disengage_distance));
     static_assert(! Enemy::within_distance({ 0, 0 }, { disengage_distance + 1, 0 }, disengage_distance));
+    static_assert(26 * 26 < (19 * 19) + (19 * 19));
+    static_assert(melee_commit_radius * melee_commit_radius >= (19 * 19) + (19 * 19));
+    static_assert(Enemy::within_distance({ 0, 0 }, { melee_commit_radius, 0 }, melee_commit_radius));
+    static_assert(Enemy::within_distance({ 0, 0 }, { -melee_commit_radius, 0 }, melee_commit_radius));
+    static_assert(! Enemy::within_distance({ 0, 0 }, { melee_commit_radius + 1, 0 }, melee_commit_radius));
+    static_assert(! Enemy::within_distance({ 0, 0 }, { 20, 20 }, melee_commit_radius));
+    static_assert(world_foot_position({ 0, 0 }, goblin_body_pushbox) == bn::fixed_point(0, 6));
 
     [[nodiscard]] WorldBox attack_hitbox(const bn::fixed_point& position, Direction direction)
     {
         return world_box(position, attack_hitboxes[int(direction)].box);
     }
 
-    [[nodiscard]] constexpr WorldBox commit_box(const WorldBox& hitbox)
-    {
-        return { hitbox.center, hitbox.width - (commit_margin * 2), hitbox.height - (commit_margin * 2) };
-    }
-
-    static_assert(commit_box({ { 0, 0 }, 12, 10 }).width == 8);
-    static_assert(commit_box({ { 0, 0 }, 12, 10 }).height == 6);
-    static_assert(! touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 10, 0 }, 10, 10 }));
-    static_assert(touches_or_intersects(commit_box({ { 0, 0 }, 12, 10 }), { { 9, 0 }, 10, 10 }));
     static_assert(discovery_bulb_frame(24) == 0);
     static_assert(discovery_bulb_frame(15) == 0);
     static_assert(discovery_bulb_frame(14) == 1);
@@ -243,7 +246,7 @@ void Goblin::hide()
     hide_enemy();
 }
 
-void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushbox, bool player_on_same_layer,
+void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
                     const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! active())
@@ -276,7 +279,7 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
     switch(_state)
     {
     case State::ROAM:
-        if(player_on_same_layer && within_distance(position(), player_pushbox.center, discovery_distance))
+        if(player_on_same_layer && within_distance(foot_position(), player_foot_position, discovery_distance))
         {
             _state = State::CHASE;
             _status_icon_timer = discovery_flash_frames;
@@ -288,7 +291,7 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         }
         break;
     case State::CHASE:
-        _update_chase(player_hurtbox, blocking_pushboxes);
+        _update_chase(player_foot_position, blocking_pushboxes);
         break;
     case State::TELEGRAPH:
         _update_telegraph();
@@ -300,7 +303,7 @@ void Goblin::update(const WorldBox& player_hurtbox, const WorldBox& player_pushb
         _update_recovery();
         break;
     case State::RETURN:
-        _update_return(player_pushbox, blocking_pushboxes);
+        _update_return(player_foot_position, blocking_pushboxes);
         break;
     case State::DEAD:
         break;
@@ -362,7 +365,8 @@ Goblin::State Goblin::state() const
     return _state;
 }
 
-void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, CollisionDebugBoxList& boxes) const
+void Goblin::append_debug_shapes(
+        CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const
 {
     if(! active())
     {
@@ -371,19 +375,15 @@ void Goblin::append_collision_debug_boxes(const WorldBox& player_hurtbox, Collis
 
     boxes.add(world_hurtbox(), CollisionDebugBoxType::HURTBOX);
     boxes.add(world_pushbox(), CollisionDebugBoxType::PUSHBOX);
-    if(_state == State::CHASE)
-    {
-        Direction attack_direction = nearest_direction(position(), player_hurtbox.center, direction());
-        boxes.add(commit_box(attack_hitbox(position(), attack_direction)), CollisionDebugBoxType::COMMIT_BOX);
-    }
-    else if(_state == State::TELEGRAPH)
-    {
-        boxes.add(commit_box(attack_hitbox(position(), _attack_direction)), CollisionDebugBoxType::COMMIT_BOX);
-    }
-    else if(attack_active())
+    if(attack_active())
     {
         boxes.add(attack_hitbox(position(), _attack_direction), CollisionDebugBoxType::HITBOX);
     }
+
+    bn::fixed_point center = foot_position();
+    radii.add(center, discovery_distance, CollisionDebugRadiusType::DISCOVERY);
+    radii.add(center, disengage_distance, CollisionDebugRadiusType::DISENGAGE);
+    radii.add(center, melee_commit_radius, CollisionDebugRadiusType::MELEE_COMMIT);
 }
 
 void Goblin::_update_roam(const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
@@ -397,10 +397,11 @@ void Goblin::_update_roam(const WorldBoxList<max_movement_obstacles>& blocking_p
     }
 }
 
-void Goblin::_update_chase(const WorldBox& player_hurtbox,
+void Goblin::_update_chase(const bn::fixed_point& player_foot_position,
                            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
-    if(! within_distance(position(), player_hurtbox.center, disengage_distance) && ! local_detour_active())
+    bn::fixed_point own_foot_position = foot_position();
+    if(! within_distance(own_foot_position, player_foot_position, disengage_distance) && ! local_detour_active())
     {
         reset_local_avoidance();
         _state = State::RETURN;
@@ -409,14 +410,14 @@ void Goblin::_update_chase(const WorldBox& player_hurtbox,
         return;
     }
 
-    Direction attack_direction = nearest_direction(position(), player_hurtbox.center, direction());
-    if(touches_or_intersects(commit_box(attack_hitbox(position(), attack_direction)), player_hurtbox))
+    Direction attack_direction = nearest_direction(own_foot_position, player_foot_position, direction());
+    if(within_distance(own_foot_position, player_foot_position, melee_commit_radius))
     {
         _start_attack(attack_direction);
         return;
     }
 
-    move_toward_with_local_avoidance(player_hurtbox.center, chase_speed, blocking_pushboxes);
+    move_toward_with_local_avoidance(player_foot_position, chase_speed, blocking_pushboxes);
 }
 
 void Goblin::_update_telegraph()
@@ -449,10 +450,10 @@ void Goblin::_update_recovery()
     }
 }
 
-void Goblin::_update_return(const WorldBox& player_pushbox,
+void Goblin::_update_return(const bn::fixed_point& player_foot_position,
                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
-    if(within_distance(position(), player_pushbox.center, discovery_distance))
+    if(within_distance(foot_position(), player_foot_position, discovery_distance))
     {
         _state = State::CHASE;
         _status_icon_timer = discovery_flash_frames;

@@ -3,6 +3,7 @@
 
 #include "bn_array.h"
 #include "bn_fixed.h"
+#include "bn_optional.h"
 #include "bn_sprite_palette_ptr.h"
 #include "bn_sprite_ptr.h"
 #include "bn_sprite_tiles_ptr.h"
@@ -67,6 +68,12 @@ private:
     [[nodiscard]] bool _stage_has_enemies() const;
     [[nodiscard]] bool _all_stage_enemies_defeated() const;
     void _update_collision_debug_overlay();
+    void _cycle_debug_enemy_type(int offset);
+    void _cycle_debug_enemy_representative();
+    void _validate_debug_enemy_type();
+    [[nodiscard]] bn::vector<CharacterId, enemy_count> _active_debug_enemy_types() const;
+    [[nodiscard]] Enemy* _first_debug_enemy_of_type(CharacterId type);
+    [[nodiscard]] Enemy* _debug_enemy_representative();
     void _sync_spatial_actors();
     void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active);
     [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
@@ -90,6 +97,8 @@ private:
     bn::vector<bn::sprite_ptr, 20> _stage_message_sprites;
     StageId _stage = StageId::STAGE_1;
     StagePhase _stage_phase = StagePhase::INTRO;
+    bn::optional<CharacterId> _debug_enemy_type;
+    bn::optional<int> _debug_enemy_actor_id;
     int _phase_frames_remaining = 0;
 };
 

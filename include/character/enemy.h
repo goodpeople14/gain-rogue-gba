@@ -4,16 +4,26 @@
 #include "character/character.h"
 #include "world/battlefield.h"
 
+class CollisionDebugBoxList;
+class CollisionDebugRadiusList;
+
 class Enemy : public Character
 {
 public:
+    virtual ~Enemy() = default;
+
     void set_home_position(const bn::fixed_point& position);
     void set_respawn_enabled(bool enabled);
 
     [[nodiscard]] bool active() const;
+    // Stable value identity for ownership-style references such as projectile debug.
+    [[nodiscard]] int actor_id() const;
     [[nodiscard]] WorldBox world_hurtbox() const;
     [[nodiscard]] WorldBox world_pushbox() const;
     [[nodiscard]] WorldBox movement_obstacle_query_area() const;
+
+    virtual void append_debug_shapes(
+            CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const = 0;
 
     [[nodiscard]] static constexpr bool within_distance(
             const bn::fixed_point& first, const bn::fixed_point& second, int distance)
@@ -21,6 +31,14 @@ public:
         bn::fixed x = first.x() - second.x();
         bn::fixed y = first.y() - second.y();
         return (x * x) + (y * y) <= distance * distance;
+    }
+
+    [[nodiscard]] static constexpr bool within_distance_strict(
+            const bn::fixed_point& first, const bn::fixed_point& second, int distance)
+    {
+        bn::fixed x = first.x() - second.x();
+        bn::fixed y = first.y() - second.y();
+        return (x * x) + (y * y) < distance * distance;
     }
 
 protected:

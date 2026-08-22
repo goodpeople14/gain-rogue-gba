@@ -24,6 +24,7 @@ public:
     [[nodiscard]] bn::fixed movement_speed() const;
     [[nodiscard]] Direction direction() const;
     [[nodiscard]] bn::fixed_point position() const;
+    [[nodiscard]] bn::fixed_point foot_position() const;
     [[nodiscard]] const CollisionBody& collision_body() const;
     [[nodiscard]] SpatialLayer spatial_layer() const;
     [[nodiscard]] const CharacterDefinition& definition() const;
