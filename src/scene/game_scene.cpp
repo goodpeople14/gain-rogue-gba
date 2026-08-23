@@ -760,23 +760,44 @@ void GameScene::_update_playing()
 
     WorldBox player_hurtbox = world_box(_player.position(), _player.collision_body().hurtbox.box);
     bn::fixed_point player_foot_position = _player.foot_position();
-    for(int index = 0; index < goblin_count; ++index)
+    for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
     {
-        Goblin& goblin = _goblins[index];
-        goblin.update(player_foot_position,
-                goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
-                goblin_spatial_actor_ids[index], _movement_query_area(goblin.movement_obstacle_query_area())));
-        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(),
-                            goblin.spatial_layer(), goblin.active());
-    }
-    for(int index = 0; index < crossbow_goblin_count; ++index)
-    {
-        CrossbowGoblin& crossbow_goblin = _crossbow_goblins[index];
-        crossbow_goblin.update(player_hurtbox, player_foot_position, _spatial_manager.movement_obstacles(
-                crossbow_spatial_actor_ids[index],
-                _movement_query_area(crossbow_goblin.movement_obstacle_query_area())), _crossbow_projectiles);
-        _sync_spatial_actor(crossbow_spatial_actor_ids[index], crossbow_goblin.world_pushbox(),
-                            crossbow_goblin.spatial_layer(), crossbow_goblin.active());
+        const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
+        if(! slot.occupied)
+        {
+            continue;
+        }
+
+        switch(slot.type)
+        {
+        case EnemyType::GOBLIN:
+        {
+            BN_ASSERT(slot.pool_index < EnemyRuntime::goblin_count);
+            Goblin& goblin = _goblins[slot.pool_index];
+            goblin.update(player_foot_position,
+                          goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
+                                  slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area())));
+            _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),
+                                goblin.spatial_layer(), goblin.active());
+            break;
+        }
+        case EnemyType::CROSSBOW:
+        {
+            BN_ASSERT(slot.pool_index < EnemyRuntime::crossbow_goblin_count);
+            CrossbowGoblin& crossbow_goblin = _crossbow_goblins[slot.pool_index];
+            crossbow_goblin.update(player_hurtbox, player_foot_position, _spatial_manager.movement_obstacles(
+                    slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area())),
+                    _crossbow_projectiles);
+            _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
+                                crossbow_goblin.spatial_layer(), crossbow_goblin.active());
+            break;
+        }
+        case EnemyType::NONE:
+            break;
+        default:
+            BN_ASSERT(false, "Unknown enemy type");
+            break;
+        }
     }
     _crossbow_projectiles.update();
 
