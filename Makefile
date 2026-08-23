@@ -55,6 +55,10 @@ ROMTITLE         := GAIN ROGUE
 ROMCODE          := GRGA
 
 # Compiler and linker options:
+# Optional development log switches (independent):
+# make USERFLAGS="-DGAIN_DEBUG_LOGS"
+# make USERFLAGS="-DGAIN_PERF_DEBUG_LOGS"
+# make USERFLAGS="-DGAIN_DEBUG_LOGS -DGAIN_PERF_DEBUG_LOGS"
 USERFLAGS        :=
 USERCXXFLAGS     :=
 USERASFLAGS      :=

@@ -100,6 +100,10 @@ private:
     bn::optional<CharacterId> _debug_enemy_type;
     bn::optional<int> _debug_enemy_actor_id;
     int _phase_frames_remaining = 0;
+
+#if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
+    int _debug_log_frame_count = 0;
+#endif
 };
 
 #endif
