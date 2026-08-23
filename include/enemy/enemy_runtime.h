@@ -17,7 +17,7 @@ enum class EnemyType : uint8_t
 
 struct ActiveEnemy
 {
-    bool active = false;
+    bool occupied = false;
     EnemyType type = EnemyType::NONE;
     SpatialActorId actor_id = SpatialActorId::PLAYER;
     uint8_t pool_index = 0;
@@ -42,6 +42,9 @@ public:
 
     ActiveEnemy& active_enemy(int index);
     const ActiveEnemy& active_enemy(int index) const;
+    void register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
+    void clear_roster();
+    [[nodiscard]] int roster_count() const;
 
 private:
     bn::array<Goblin, goblin_count> _goblins;

@@ -57,3 +57,52 @@ const ActiveEnemy& EnemyRuntime::active_enemy(int index) const
     BN_ASSERT(index >= 0 && index < active_enemy_capacity);
     return _active_enemies[index];
 }
+
+void EnemyRuntime::register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id)
+{
+    for(ActiveEnemy& enemy : _active_enemies)
+    {
+        if(enemy.occupied && enemy.type == type && enemy.pool_index == pool_index)
+        {
+            return;
+        }
+    }
+
+    for(ActiveEnemy& enemy : _active_enemies)
+    {
+        if(! enemy.occupied)
+        {
+            enemy.occupied = true;
+            enemy.type = type;
+            enemy.pool_index = pool_index;
+            enemy.actor_id = actor_id;
+            return;
+        }
+    }
+
+    BN_ASSERT(false, "Enemy roster full");
+}
+
+void EnemyRuntime::clear_roster()
+{
+    for(ActiveEnemy& enemy : _active_enemies)
+    {
+        enemy.occupied = false;
+        enemy.type = EnemyType::NONE;
+        enemy.pool_index = 0;
+        enemy.actor_id = SpatialActorId::PLAYER;
+    }
+}
+
+int EnemyRuntime::roster_count() const
+{
+    int result = 0;
+    for(const ActiveEnemy& enemy : _active_enemies)
+    {
+        if(enemy.occupied)
+        {
+            ++result;
+        }
+    }
+    return result;
+}

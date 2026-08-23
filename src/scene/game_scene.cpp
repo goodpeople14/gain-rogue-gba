@@ -626,6 +626,7 @@ void GameScene::_start_stage(StageId stage)
                            Battlefield::StageVisual::STAGE_2);
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
+    _enemy_runtime.clear_roster();
     const StageData& ground_stage_data = _stage == StageId::STAGE_1 ? stage1::data : stage2::ground_data;
     const StageStaticObstacleData& ground_static_obstacles =
             _stage == StageId::STAGE_1 ? stage1::static_obstacles : stage2::ground_static_obstacles;
@@ -652,6 +653,7 @@ void GameScene::_start_stage(StageId stage)
             goblin.set_spatial_layer(SpatialLayer::GROUND);
             goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
             goblin.enter();
+            _enemy_runtime.register_enemy(EnemyType::GOBLIN, uint8_t(index), goblin_spatial_actor_ids[index]);
         }
         else
         {
@@ -672,6 +674,8 @@ void GameScene::_start_stage(StageId stage)
                                             SpatialLayer::UPPER : SpatialLayer::GROUND);
             crossbow_goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
             crossbow_goblin.enter();
+            _enemy_runtime.register_enemy(EnemyType::CROSSBOW, uint8_t(index),
+                                           crossbow_spatial_actor_ids[index]);
         }
         else
         {
