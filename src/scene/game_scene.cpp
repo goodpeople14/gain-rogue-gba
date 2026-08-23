@@ -802,14 +802,38 @@ void GameScene::_update_playing()
     _crossbow_projectiles.update();
 
     int player_damage = 0;
-    for(Goblin& goblin : _goblins)
+    for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
     {
-        goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
-        player_damage += goblin.resolve_player_hit(_player.position(), _player.collision_body().hurtbox, _hit_effects);
-    }
-    for(CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
-    {
-        crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+        const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
+        if(! slot.occupied)
+        {
+            continue;
+        }
+
+        switch(slot.type)
+        {
+        case EnemyType::GOBLIN:
+        {
+            BN_ASSERT(slot.pool_index < EnemyRuntime::goblin_count);
+            Goblin& goblin = _goblins[slot.pool_index];
+            goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+            player_damage += goblin.resolve_player_hit(
+                    _player.position(), _player.collision_body().hurtbox, _hit_effects);
+            break;
+        }
+        case EnemyType::CROSSBOW:
+        {
+            BN_ASSERT(slot.pool_index < EnemyRuntime::crossbow_goblin_count);
+            CrossbowGoblin& crossbow_goblin = _crossbow_goblins[slot.pool_index];
+            crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+            break;
+        }
+        case EnemyType::NONE:
+            break;
+        default:
+            BN_ASSERT(false, "Unknown enemy type");
+            break;
+        }
     }
     player_damage += _crossbow_projectiles.resolve_player_hit(
             _player.position(), _player.collision_body().hurtbox, _hit_effects);
@@ -953,19 +977,35 @@ bool GameScene::_stage_has_enemies() const
 
 bool GameScene::_all_stage_enemies_defeated() const
 {
-    for(const Goblin& goblin : _goblins)
+    for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
     {
-        if(goblin.active())
+        const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
+        if(! slot.occupied)
         {
-            return false;
+            continue;
         }
-    }
 
-    for(const CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
-    {
-        if(crossbow_goblin.active())
+        switch(slot.type)
         {
-            return false;
+        case EnemyType::GOBLIN:
+            BN_ASSERT(slot.pool_index < EnemyRuntime::goblin_count);
+            if(_goblins[slot.pool_index].active())
+            {
+                return false;
+            }
+            break;
+        case EnemyType::CROSSBOW:
+            BN_ASSERT(slot.pool_index < EnemyRuntime::crossbow_goblin_count);
+            if(_crossbow_goblins[slot.pool_index].active())
+            {
+                return false;
+            }
+            break;
+        case EnemyType::NONE:
+            break;
+        default:
+            BN_ASSERT(false, "Unknown enemy type");
+            break;
         }
     }
 
