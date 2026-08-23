@@ -15,6 +15,9 @@
 #include "world/stages/stage1.h"
 #include "world/stages/stage2.h"
 
+#define _goblins (_enemy_runtime.goblins())
+#define _crossbow_goblins (_enemy_runtime.crossbow_goblins())
+
 namespace
 {
     constexpr bn::color game_background_color(3, 12, 7);
@@ -435,18 +438,8 @@ namespace
 GameScene::GameScene() :
     _player(bn::fixed_point(player_start_x, player_start_y)),
     _player_bounds(player_bounds),
-    _goblins{{
-        Goblin(goblin_home_positions[0], goblin_target_ids[0]),
-        Goblin(goblin_home_positions[1], goblin_target_ids[1]),
-        Goblin(goblin_home_positions[2], goblin_target_ids[2]),
-        Goblin(goblin_home_positions[3], goblin_target_ids[3])
-    }},
-    _crossbow_goblins{{
-        CrossbowGoblin(crossbow_goblin_home_positions[0], crossbow_goblin_target_ids[0]),
-        CrossbowGoblin(crossbow_goblin_home_positions[1], crossbow_goblin_target_ids[1]),
-        CrossbowGoblin(crossbow_goblin_home_positions[2], crossbow_goblin_target_ids[2]),
-        CrossbowGoblin(crossbow_goblin_home_positions[3], crossbow_goblin_target_ids[3])
-    }},
+    _enemy_runtime(goblin_home_positions, goblin_target_ids,
+                   crossbow_goblin_home_positions, crossbow_goblin_target_ids),
     _stage_glyph_tiles(make_stage_glyph_tiles()),
     // This shares the title glyph palette and keeps it alive after TitleScene::hide().
     _stage_glyph_palette(stage_glyph_item.palette_item().create_palette()),
@@ -1185,3 +1178,6 @@ WorldBox GameScene::_movement_query_area(const WorldBox& pushbox)
     return { pushbox.center, pushbox.width + movement_query_padding * 2,
              pushbox.height + movement_query_padding * 2 };
 }
+
+#undef _goblins
+#undef _crossbow_goblins

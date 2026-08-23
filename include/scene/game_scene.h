@@ -11,8 +11,7 @@
 
 #include "character/player_controller.h"
 #include "character/swordsman.h"
-#include "character/goblin.h"
-#include "character/crossbow_goblin.h"
+#include "enemy/enemy_runtime.h"
 #include "combat/crossbow_projectile_pool.h"
 #include "combat/hit_effect_manager.h"
 #include "debug/collision_debug_overlay.h"
@@ -83,8 +82,7 @@ private:
     Swordsman _player;
     PlayerController _player_controller;
     MovementBounds _player_bounds;
-    bn::array<Goblin, goblin_count> _goblins;
-    bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
+    EnemyRuntime _enemy_runtime;
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
     bn::array<bn::sprite_tiles_ptr, 20> _stage_glyph_tiles;
