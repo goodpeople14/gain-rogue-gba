@@ -23,6 +23,7 @@ SOURCES          := src \
                     src/scene \
                     src/world \
                     src/character \
+                    src/enemy \
                     src/combat \
                     src/debug \
                     src/combat/melee \

@@ -11,8 +11,7 @@
 
 #include "character/player_controller.h"
 #include "character/swordsman.h"
-#include "character/goblin.h"
-#include "character/crossbow_goblin.h"
+#include "enemy/enemy_runtime.h"
 #include "combat/crossbow_projectile_pool.h"
 #include "combat/hit_effect_manager.h"
 #include "debug/collision_debug_overlay.h"
@@ -75,15 +74,15 @@ private:
     [[nodiscard]] Enemy* _first_debug_enemy_of_type(CharacterId type);
     [[nodiscard]] Enemy* _debug_enemy_representative();
     void _sync_spatial_actors();
-    void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active);
+    void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,
+                             SpatialLayer layer, bool active);
     [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
 
     Battlefield _battlefield;
     Swordsman _player;
     PlayerController _player_controller;
     MovementBounds _player_bounds;
-    bn::array<Goblin, goblin_count> _goblins;
-    bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
+    EnemyRuntime _enemy_runtime;
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
     bn::array<bn::sprite_tiles_ptr, 20> _stage_glyph_tiles;
