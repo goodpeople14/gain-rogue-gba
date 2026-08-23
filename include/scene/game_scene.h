@@ -75,7 +75,8 @@ private:
     [[nodiscard]] Enemy* _first_debug_enemy_of_type(CharacterId type);
     [[nodiscard]] Enemy* _debug_enemy_representative();
     void _sync_spatial_actors();
-    void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active);
+    void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,
+                             SpatialLayer layer, bool active);
     [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
 
     Battlefield _battlefield;

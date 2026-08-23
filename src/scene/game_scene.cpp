@@ -80,12 +80,12 @@ namespace
         types.push_back(type);
     }
     constexpr bn::array<SpatialActorId, GameScene::goblin_count> goblin_spatial_actor_ids = {{
-        SpatialActorId::GOBLIN_0, SpatialActorId::GOBLIN_1,
-        SpatialActorId::GOBLIN_2, SpatialActorId::GOBLIN_3
+        SpatialActorId::ACTOR_0, SpatialActorId::ACTOR_1,
+        SpatialActorId::ACTOR_2, SpatialActorId::ACTOR_3
     }};
     constexpr bn::array<SpatialActorId, GameScene::crossbow_goblin_count> crossbow_spatial_actor_ids = {{
-        SpatialActorId::CROSSBOW_GOBLIN_0, SpatialActorId::CROSSBOW_GOBLIN_1,
-        SpatialActorId::CROSSBOW_GOBLIN_2, SpatialActorId::CROSSBOW_GOBLIN_3
+        SpatialActorId::ACTOR_4, SpatialActorId::ACTOR_5,
+        SpatialActorId::ACTOR_6, SpatialActorId::ACTOR_7
     }};
 
     constexpr MovementBounds player_bounds = Battlefield::movement_bounds(player_size, player_size);
@@ -745,7 +745,8 @@ void GameScene::_update_playing()
     }
 
     _sync_spatial_actor(SpatialActorId::PLAYER,
-                        world_box(_player.position(), _player.collision_body().pushbox.box), true);
+                        world_box(_player.position(), _player.collision_body().pushbox.box),
+                        _player.spatial_layer(), true);
 
     if(command.attack_requested)
     {
@@ -768,7 +769,8 @@ void GameScene::_update_playing()
         goblin.update(player_foot_position,
                 goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
                 goblin_spatial_actor_ids[index], _movement_query_area(goblin.movement_obstacle_query_area())));
-        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(), goblin.active());
+        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(),
+                            goblin.spatial_layer(), goblin.active());
     }
     for(int index = 0; index < crossbow_goblin_count; ++index)
     {
@@ -777,7 +779,7 @@ void GameScene::_update_playing()
                 crossbow_spatial_actor_ids[index],
                 _movement_query_area(crossbow_goblin.movement_obstacle_query_area())), _crossbow_projectiles);
         _sync_spatial_actor(crossbow_spatial_actor_ids[index], crossbow_goblin.world_pushbox(),
-                            crossbow_goblin.active());
+                            crossbow_goblin.spatial_layer(), crossbow_goblin.active());
     }
     _crossbow_projectiles.update();
 
@@ -849,7 +851,8 @@ void GameScene::_update_player_gameplay()
     }
 
     _sync_spatial_actor(SpatialActorId::PLAYER,
-                        world_box(_player.position(), _player.collision_body().pushbox.box), true);
+                        world_box(_player.position(), _player.collision_body().pushbox.box),
+                        _player.spatial_layer(), true);
 
     if(command.attack_requested)
     {
@@ -1154,27 +1157,25 @@ Enemy* GameScene::_debug_enemy_representative()
 void GameScene::_sync_spatial_actors()
 {
     _sync_spatial_actor(SpatialActorId::PLAYER,
-                        world_box(_player.position(), _player.collision_body().pushbox.box), true);
+                        world_box(_player.position(), _player.collision_body().pushbox.box),
+                        _player.spatial_layer(), true);
     for(int index = 0; index < goblin_count; ++index)
     {
         const Goblin& goblin = _goblins[index];
-        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(), goblin.active());
+        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(),
+                            goblin.spatial_layer(), goblin.active());
     }
     for(int index = 0; index < crossbow_goblin_count; ++index)
     {
         const CrossbowGoblin& crossbow_goblin = _crossbow_goblins[index];
         _sync_spatial_actor(crossbow_spatial_actor_ids[index], crossbow_goblin.world_pushbox(),
-                            crossbow_goblin.active());
+                            crossbow_goblin.spatial_layer(), crossbow_goblin.active());
     }
 }
 
-void GameScene::_sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox, bool active)
+void GameScene::_sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,
+                                    SpatialLayer layer, bool active)
 {
-    int actor_index = int(actor_id);
-    SpatialLayer layer = actor_id == SpatialActorId::PLAYER ? _player.spatial_layer() :
-            actor_index >= int(SpatialActorId::CROSSBOW_GOBLIN_0) ?
-                    _crossbow_goblins[actor_index - int(SpatialActorId::CROSSBOW_GOBLIN_0)].spatial_layer() :
-                    _goblins[actor_index - int(SpatialActorId::GOBLIN_0)].spatial_layer();
     _spatial_manager.update_actor(actor_id, pushbox, layer);
     _spatial_manager.set_actor_active(actor_id, active);
 }

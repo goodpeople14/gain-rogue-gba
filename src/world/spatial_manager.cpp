@@ -140,14 +140,16 @@ namespace
     static_assert(full_scan_stage_obstacle_mask(spatial_test_stage, { { -12, -12 }, 4, 4 }) == 0);
     static_assert(full_scan_stage_obstacle_mask(spatial_test_stage, { { -4, -12 }, 4, 4 }) == (1U << 1));
     static_assert(spatial_test_obstacles.count == 1);
+    static_assert(sizeof(SpatialActorId) == 1);
+    static_assert(SpatialManager::cell_actor_capacity == SpatialManager::actor_count);
     static_assert(touches_or_intersects({ { 6, 0 }, 8, 8 }, spatial_test_obstacle_boxes[0]));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::PLAYER, true,
                                         SpatialLayer::GROUND, SpatialLayer::GROUND));
-    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, false,
+    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::ACTOR_0, false,
                                         SpatialLayer::GROUND, SpatialLayer::GROUND));
-    static_assert(should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true,
+    static_assert(should_include_actor(SpatialActorId::PLAYER, SpatialActorId::ACTOR_0, true,
                                        SpatialLayer::GROUND, SpatialLayer::GROUND));
-    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::GOBLIN_0, true,
+    static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::ACTOR_0, true,
                                         SpatialLayer::GROUND, SpatialLayer::UPPER));
 }
 
@@ -172,26 +174,55 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
     BN_ASSERT(upper_static_obstacles.count <= max_stage_object_movement_obstacles);
     _ground = { &ground_stage, &ground_static_obstacles };
     _upper = { &upper_stage, &upper_static_obstacles };
+    BN_ASSERT(ground_stage.width * ground_stage.height <= SpatialManager::max_stage_cells);
+    _stage_cell_count = ground_stage.width * ground_stage.height;
+    _clear_position_table();
 }
 
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
+    if(actor.active)
+    {
+        _remove_actor_from_position_table(actor_id, actor.pushbox);
+    }
     actor.pushbox = pushbox;
     actor.layer = layer;
     actor.active = true;
+    _register_actor_in_position_table(actor_id, actor.pushbox);
 }
 
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
+    if(actor.active)
+    {
+        _remove_actor_from_position_table(actor_id, actor.pushbox);
+    }
     actor.pushbox = pushbox;
     actor.layer = layer;
+    if(actor.active)
+    {
+        _register_actor_in_position_table(actor_id, actor.pushbox);
+    }
 }
 
 void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
 {
-    _actors[actor_index(actor_id)].active = active;
+    Actor& actor = _actors[actor_index(actor_id)];
+    if(actor.active == active)
+    {
+        return;
+    }
+    if(actor.active)
+    {
+        _remove_actor_from_position_table(actor_id, actor.pushbox);
+    }
+    actor.active = active;
+    if(actor.active)
+    {
+        _register_actor_in_position_table(actor_id, actor.pushbox);
+    }
 }
 
 const StageStaticObstacleData& SpatialManager::static_obstacles(SpatialLayer layer) const
@@ -202,6 +233,83 @@ const StageStaticObstacleData& SpatialManager::static_obstacles(SpatialLayer lay
 const SpatialManager::LayerData& SpatialManager::_layer_data(SpatialLayer layer) const
 {
     return layer == SpatialLayer::GROUND ? _ground : _upper;
+}
+
+SpatialManager::PositionCellRange SpatialManager::_stage_cell_range(const WorldBox& area) const
+{
+    const StageData& stage = *_ground.stage;
+    const int world_minimum = stage_world_minimum(stage);
+    const bn::fixed min_x_world = area.center.x() - bn::fixed(area.width) / 2;
+    const bn::fixed max_x_world = area.center.x() + bn::fixed(area.width) / 2;
+    const bn::fixed min_y_world = area.center.y() - bn::fixed(area.height) / 2;
+    const bn::fixed max_y_world = area.center.y() + bn::fixed(area.height) / 2;
+    const int min_x = ((min_x_world - world_minimum) / stage.tile_size).ceil_integer() - 1;
+    const int max_x = ((max_x_world - world_minimum) / stage.tile_size).floor_integer();
+    const int min_y = ((min_y_world - world_minimum) / stage.tile_size).ceil_integer() - 1;
+    const int max_y = ((max_y_world - world_minimum) / stage.tile_size).floor_integer();
+    return { min_x < 0 ? 0 : min_x, max_x >= stage.width ? stage.width - 1 : max_x,
+             min_y < 0 ? 0 : min_y, max_y >= stage.height ? stage.height - 1 : max_y };
+}
+
+void SpatialManager::_clear_position_table()
+{
+    for(CellActorList& cell : _position_table)
+    {
+        cell.count = 0;
+    }
+}
+
+void SpatialManager::_remove_actor_from_position_table(SpatialActorId actor_id, const WorldBox& pushbox)
+{
+    PositionCellRange range = _stage_cell_range(pushbox);
+    if(range.min_x > range.max_x || range.min_y > range.max_y)
+    {
+        return;
+    }
+    const StageData& stage = *_ground.stage;
+    for(int y = range.min_y; y <= range.max_y; ++y)
+    {
+        for(int x = range.min_x; x <= range.max_x; ++x)
+        {
+            CellActorList& cell = _position_table[stage_cell_index(stage, x, y)];
+            for(int index = 0; index < cell.count; ++index)
+            {
+                if(cell.actor_ids[index] == actor_id)
+                {
+                    cell.actor_ids[index] = cell.actor_ids[cell.count - 1];
+                    --cell.count;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void SpatialManager::_register_actor_in_position_table(SpatialActorId actor_id, const WorldBox& pushbox)
+{
+    PositionCellRange range = _stage_cell_range(pushbox);
+    if(range.min_x > range.max_x || range.min_y > range.max_y)
+    {
+        return;
+    }
+    const StageData& stage = *_ground.stage;
+    for(int y = range.min_y; y <= range.max_y; ++y)
+    {
+        for(int x = range.min_x; x <= range.max_x; ++x)
+        {
+            CellActorList& cell = _position_table[stage_cell_index(stage, x, y)];
+            bool already_registered = false;
+            for(int index = 0; index < cell.count; ++index)
+            {
+                already_registered |= cell.actor_ids[index] == actor_id;
+            }
+            if(! already_registered)
+            {
+                BN_ASSERT(cell.count < cell_actor_capacity);
+                cell.actor_ids[cell.count++] = actor_id;
+            }
+        }
+    }
 }
 
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
