@@ -1229,6 +1229,10 @@ void GameScene::_sync_spatial_actors()
         _sync_spatial_actor(crossbow_spatial_actor_ids[index], crossbow_goblin.world_pushbox(),
                             crossbow_goblin.spatial_layer(), crossbow_goblin.active());
     }
+
+#if defined(GAIN_DEBUG_LOGS)
+    _spatial_manager.validate_position_table();
+#endif
 }
 
 void GameScene::_sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,

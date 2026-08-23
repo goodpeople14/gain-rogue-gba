@@ -46,6 +46,10 @@ public:
     [[nodiscard]] WorldBoxList<max_movement_obstacles> movement_obstacles(
             SpatialActorId actor_id, const WorldBox& movement_area) const;
 
+#if defined(GAIN_DEBUG_LOGS)
+    void validate_position_table() const;
+#endif
+
 private:
     struct CellActorList
     {
@@ -79,6 +83,10 @@ private:
     void _clear_position_table();
     void _remove_actor_from_position_table(SpatialActorId actor_id, const WorldBox& pushbox);
     void _register_actor_in_position_table(SpatialActorId actor_id, const WorldBox& pushbox);
+
+#if defined(GAIN_DEBUG_LOGS)
+    void _validate_position_table_is_empty() const;
+#endif
 
     LayerData _ground;
     LayerData _upper;

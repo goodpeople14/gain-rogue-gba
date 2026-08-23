@@ -177,6 +177,10 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
     BN_ASSERT(ground_stage.width * ground_stage.height <= SpatialManager::max_stage_cells);
     _stage_cell_count = ground_stage.width * ground_stage.height;
     _clear_position_table();
+
+#if defined(GAIN_DEBUG_LOGS)
+    _validate_position_table_is_empty();
+#endif
 }
 
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
@@ -311,6 +315,72 @@ void SpatialManager::_register_actor_in_position_table(SpatialActorId actor_id, 
         }
     }
 }
+
+#if defined(GAIN_DEBUG_LOGS)
+void SpatialManager::_validate_position_table_is_empty() const
+{
+    for(int cell_index = 0; cell_index < _stage_cell_count; ++cell_index)
+    {
+        BN_ASSERT(_position_table[cell_index].count == 0, "Position table not cleared");
+    }
+}
+
+void SpatialManager::validate_position_table() const
+{
+    const StageData& stage = *_ground.stage;
+
+    for(int cell_index = 0; cell_index < _stage_cell_count; ++cell_index)
+    {
+        const CellActorList& cell = _position_table[cell_index];
+        BN_ASSERT(cell.count <= cell_actor_capacity, "Position table cell overflow");
+
+        const int cell_x = cell_index % stage.width;
+        const int cell_y = cell_index / stage.width;
+        for(int entry_index = 0; entry_index < cell.count; ++entry_index)
+        {
+            const SpatialActorId actor_id = cell.actor_ids[entry_index];
+            const int index = actor_index(actor_id);
+            BN_ASSERT(index >= 0 && index < actor_count, "Invalid position table actor");
+            BN_ASSERT(_actors[index].active, "Inactive actor in position table");
+
+            PositionCellRange expected_range = _stage_cell_range(_actors[index].pushbox);
+            BN_ASSERT(cell_x >= expected_range.min_x && cell_x <= expected_range.max_x &&
+                      cell_y >= expected_range.min_y && cell_y <= expected_range.max_y,
+                      "Stale position table actor");
+
+            for(int previous_index = 0; previous_index < entry_index; ++previous_index)
+            {
+                BN_ASSERT(cell.actor_ids[previous_index] != actor_id, "Duplicate position table actor");
+            }
+        }
+    }
+
+    for(int index = 0; index < actor_count; ++index)
+    {
+        const Actor& actor = _actors[index];
+        if(! actor.active)
+        {
+            continue;
+        }
+
+        const SpatialActorId actor_id = SpatialActorId(index);
+        PositionCellRange expected_range = _stage_cell_range(actor.pushbox);
+        for(int cell_y = expected_range.min_y; cell_y <= expected_range.max_y; ++cell_y)
+        {
+            for(int cell_x = expected_range.min_x; cell_x <= expected_range.max_x; ++cell_x)
+            {
+                const CellActorList& cell = _position_table[stage_cell_index(stage, cell_x, cell_y)];
+                int occurrences = 0;
+                for(int entry_index = 0; entry_index < cell.count; ++entry_index)
+                {
+                    occurrences += cell.actor_ids[entry_index] == actor_id;
+                }
+                BN_ASSERT(occurrences == 1, "Missing position table actor");
+            }
+        }
+    }
+}
+#endif
 
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         SpatialActorId actor_id, const WorldBox& movement_area) const
