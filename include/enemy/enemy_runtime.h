@@ -20,6 +20,7 @@ struct ActiveEnemy
     bool active = false;
     EnemyType type = EnemyType::NONE;
     SpatialActorId actor_id = SpatialActorId::PLAYER;
+    uint8_t pool_index = 0;
 };
 
 class EnemyRuntime

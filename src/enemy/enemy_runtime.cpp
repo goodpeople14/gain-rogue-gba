@@ -3,8 +3,9 @@
 #include "bn_assert.h"
 
 static_assert(sizeof(EnemyType) == 1);
-static_assert(sizeof(ActiveEnemy) == 3);
+static_assert(sizeof(ActiveEnemy) == 4);
 static_assert(EnemyRuntime::active_enemy_capacity == 60);
+static_assert(uint8_t(EnemyType::GOBLIN) != uint8_t(EnemyType::CROSSBOW));
 
 EnemyRuntime::EnemyRuntime(const bn::array<bn::fixed_point, goblin_count>& goblin_home_positions,
                            const bn::array<int, goblin_count>& goblin_target_ids,
