@@ -1,5 +1,11 @@
 #include "enemy/enemy_runtime.h"
 
+#include "bn_assert.h"
+
+static_assert(sizeof(EnemyType) == 1);
+static_assert(sizeof(ActiveEnemy) == 3);
+static_assert(EnemyRuntime::active_enemy_capacity == 60);
+
 EnemyRuntime::EnemyRuntime(const bn::array<bn::fixed_point, goblin_count>& goblin_home_positions,
                            const bn::array<int, goblin_count>& goblin_target_ids,
                            const bn::array<bn::fixed_point, crossbow_goblin_count>& crossbow_home_positions,
@@ -37,4 +43,16 @@ bn::array<CrossbowGoblin, EnemyRuntime::crossbow_goblin_count>& EnemyRuntime::cr
 const bn::array<CrossbowGoblin, EnemyRuntime::crossbow_goblin_count>& EnemyRuntime::crossbow_goblins() const
 {
     return _crossbow_goblins;
+}
+
+ActiveEnemy& EnemyRuntime::active_enemy(int index)
+{
+    BN_ASSERT(index >= 0 && index < active_enemy_capacity);
+    return _active_enemies[index];
+}
+
+const ActiveEnemy& EnemyRuntime::active_enemy(int index) const
+{
+    BN_ASSERT(index >= 0 && index < active_enemy_capacity);
+    return _active_enemies[index];
 }
