@@ -4,6 +4,8 @@
 #include "bn_array.h"
 #include "bn_fixed.h"
 #include "bn_keypad.h"
+#include "bn_log.h"
+#include "bn_log_level.h"
 #include "bn_sprite_builder.h"
 #include "bn_sprite_item.h"
 #include "bn_tile.h"
@@ -525,6 +527,25 @@ void GameScene::exit()
 
 bool GameScene::update()
 {
+#if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
+    ++_debug_log_frame_count;
+
+    if(_debug_log_frame_count % 60 == 0)
+    {
+        int stage_number = _stage == StageId::STAGE_1 ? 1 : 2;
+
+    #if defined(GAIN_DEBUG_LOGS)
+        BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", stage_number,
+                     " frame=", _debug_log_frame_count);
+    #endif
+
+    #if defined(GAIN_PERF_DEBUG_LOGS)
+        BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", stage_number,
+                     " frame=", _debug_log_frame_count);
+    #endif
+    }
+#endif
+
     if(_stage_phase == StagePhase::PLAYER_DEAD)
     {
         if(--_phase_frames_remaining == 0)
@@ -595,6 +616,19 @@ bool GameScene::update()
 void GameScene::_start_stage(StageId stage)
 {
     _stage = stage;
+
+#if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
+    int stage_number = _stage == StageId::STAGE_1 ? 1 : 2;
+#endif
+
+#if defined(GAIN_DEBUG_LOGS)
+    BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", stage_number, " entered");
+#endif
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", stage_number, " entered");
+#endif
+
     _battlefield.set_stage(_stage == StageId::STAGE_1 ? Battlefield::StageVisual::STAGE_1 :
                            Battlefield::StageVisual::STAGE_2);
     _stage_phase = StagePhase::INTRO;
