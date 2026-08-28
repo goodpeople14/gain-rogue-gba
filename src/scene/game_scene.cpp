@@ -816,16 +816,28 @@ void GameScene::_update_playing()
         {
             BN_ASSERT(slot.pool_index < EnemyRuntime::goblin_count);
             Goblin& goblin = _goblins[slot.pool_index];
+            const bool active_before_combat = goblin.active();
             goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
             player_damage += goblin.resolve_player_hit(
                     _player.position(), _player.collision_body().hurtbox, _hit_effects);
+            if(goblin.active() != active_before_combat)
+            {
+                _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),
+                                    goblin.spatial_layer(), goblin.active());
+            }
             break;
         }
         case EnemyType::CROSSBOW:
         {
             BN_ASSERT(slot.pool_index < EnemyRuntime::crossbow_goblin_count);
             CrossbowGoblin& crossbow_goblin = _crossbow_goblins[slot.pool_index];
+            const bool active_before_combat = crossbow_goblin.active();
             crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+            if(crossbow_goblin.active() != active_before_combat)
+            {
+                _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
+                                    crossbow_goblin.spatial_layer(), crossbow_goblin.active());
+            }
             break;
         }
         case EnemyType::NONE:
@@ -837,7 +849,9 @@ void GameScene::_update_playing()
     }
     player_damage += _crossbow_projectiles.resolve_player_hit(
             _player.position(), _player.collision_body().hurtbox, _hit_effects);
-    _sync_spatial_actors();
+#if defined(GAIN_DEBUG_LOGS)
+    _spatial_manager.validate_position_table();
+#endif
     _hit_effects.update();
 
     _apply_player_damage(player_damage);
