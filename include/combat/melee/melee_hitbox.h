@@ -10,6 +10,7 @@ class MeleeHitbox
 {
 public:
     void activate(const AttackContext& context, int active_frames, int attack_power);
+    void reset();
     void update();
 
     [[nodiscard]] bool active() const;

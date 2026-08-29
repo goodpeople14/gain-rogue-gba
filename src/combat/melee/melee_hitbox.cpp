@@ -33,6 +33,15 @@ void MeleeHitbox::activate(const AttackContext& context, int active_frames, int 
     _hit_registry.reset();
 }
 
+void MeleeHitbox::reset()
+{
+    _hit_registry.reset();
+    _context = {};
+    _game_frame = 0;
+    _total_frames = 0;
+    _attack_power = 0;
+}
+
 void MeleeHitbox::update()
 {
     if(_game_frame == 0)
