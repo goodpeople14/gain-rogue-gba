@@ -29,6 +29,13 @@ void SwordsmanAttack::update(const bn::fixed_point& owner_position)
     _slash_effect.update(owner_position);
 }
 
+void SwordsmanAttack::reset()
+{
+    _hitbox.reset();
+    _slash_effect.clear();
+    _cooldown_remaining = 0;
+}
+
 void SwordsmanAttack::clear_visual_effect()
 {
     _slash_effect.clear();
