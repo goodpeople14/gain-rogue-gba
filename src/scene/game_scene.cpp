@@ -12,8 +12,6 @@
 
 #include "combat/collision/movement_collision.h"
 #include "combat/collision/collision_math.h"
-#include "world/stages/stage1.h"
-#include "world/stages/stage2.h"
 
 #define _goblins (_enemy_runtime.goblins())
 #define _crossbow_goblins (_enemy_runtime.crossbow_goblins())
@@ -276,16 +274,18 @@ namespace
 }
 
 GameScene::GameScene() :
-    _player(stage1::definition.player_spawn),
+    _player(stage_definition(StageId::STAGE_1).player_spawn),
     _player_bounds(player_bounds),
     _enemy_runtime(),
     _stage_glyph_tiles(make_stage_glyph_tiles()),
     // This shares the title glyph palette and keeps it alive after TitleScene::hide().
     _stage_glyph_palette(stage_glyph_item.palette_item().create_palette()),
     _player_health_tiles(make_player_health_tiles()),
-    _spatial_debug_overlay(stage1::definition.ground_stage),
-    _spatial_manager(stage1::definition.ground_stage, stage1::definition.ground_static_obstacles,
-                     stage1::definition.upper_stage, stage1::definition.upper_static_obstacles)
+    _spatial_debug_overlay(stage_definition(StageId::STAGE_1).ground_stage),
+    _spatial_manager(stage_definition(StageId::STAGE_1).ground_stage,
+                     stage_definition(StageId::STAGE_1).ground_static_obstacles,
+                     stage_definition(StageId::STAGE_1).upper_stage,
+                     stage_definition(StageId::STAGE_1).upper_static_obstacles)
 {
     int health_x = player_health_hud_x;
     const CharacterDefinition& player_definition = _player.definition();
@@ -465,7 +465,7 @@ void GameScene::_start_stage(StageId stage)
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
     _enemy_runtime.clear_roster();
-    const StageDefinition& definition = _stage == StageId::STAGE_1 ? stage1::definition : stage2::definition;
+    const StageDefinition& definition = stage_definition(_stage);
     _battlefield.set_stage(definition.visual);
     _spatial_manager.set_stage(definition.ground_stage, definition.ground_static_obstacles,
                                definition.upper_stage, definition.upper_static_obstacles);
@@ -707,7 +707,7 @@ void GameScene::_update_cleared()
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    const StageDefinition& definition = _stage == StageId::STAGE_1 ? stage1::definition : stage2::definition;
+    const StageDefinition& definition = stage_definition(_stage);
     const WorldBox& exit_box = definition.exit_box;
     if(touches_or_intersects(player_pushbox, exit_box))
     {
