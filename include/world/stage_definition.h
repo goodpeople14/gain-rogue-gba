@@ -44,4 +44,6 @@ struct StageDefinition
     WorldBox exit_box;
 };
 
+[[nodiscard]] const StageDefinition& stage_definition(StageId stage);
+
 #endif
