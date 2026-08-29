@@ -21,6 +21,14 @@ enum class SpatialActorId : uint8_t
     ACTOR_5,
     ACTOR_6,
     ACTOR_7,
+    ACTOR_8,
+    ACTOR_9,
+    ACTOR_10,
+    ACTOR_11,
+    ACTOR_12,
+    ACTOR_13,
+    ACTOR_14,
+    ACTOR_15,
     COUNT
 };
 

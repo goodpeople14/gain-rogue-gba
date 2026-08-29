@@ -14,7 +14,10 @@
 enum class StageId : uint8_t
 {
     STAGE_1,
-    STAGE_2
+    STAGE_2,
+    STAGE_3,
+    STAGE_4,
+    STAGE_5
 };
 
 enum class StageVisualId : uint8_t
