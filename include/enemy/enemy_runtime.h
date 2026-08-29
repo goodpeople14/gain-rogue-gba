@@ -34,12 +34,12 @@ public:
     ActiveEnemy& active_enemy(int index);
     const ActiveEnemy& active_enemy(int index) const;
     ActiveEnemy& allocate_enemy(EnemyType type);
-    ActiveEnemy& register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
-    [[nodiscard]] SpatialActorId actor_id(EnemyType type, uint8_t pool_index) const;
     void clear_roster();
     [[nodiscard]] int roster_count() const;
 
 private:
+    ActiveEnemy& _register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
+    [[nodiscard]] SpatialActorId _actor_id(EnemyType type, uint8_t pool_index) const;
     bn::array<Goblin, goblin_count> _goblins;
     bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
     bn::array<ActiveEnemy, active_enemy_capacity> _active_enemies = {};

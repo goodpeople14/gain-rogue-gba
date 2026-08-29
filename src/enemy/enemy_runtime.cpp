@@ -85,7 +85,7 @@ ActiveEnemy& EnemyRuntime::allocate_enemy(EnemyType type)
         }
         if(! allocated)
         {
-            return register_enemy(type, uint8_t(pool_index), actor_id(type, uint8_t(pool_index)));
+            return _register_enemy(type, uint8_t(pool_index), _actor_id(type, uint8_t(pool_index)));
         }
     }
 
@@ -93,9 +93,9 @@ ActiveEnemy& EnemyRuntime::allocate_enemy(EnemyType type)
     return _active_enemies[0];
 }
 
-ActiveEnemy& EnemyRuntime::register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id)
+ActiveEnemy& EnemyRuntime::_register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id)
 {
-    BN_ASSERT(actor_id == this->actor_id(type, pool_index), "Unexpected enemy actor id");
+    BN_ASSERT(actor_id == _actor_id(type, pool_index), "Unexpected enemy actor id");
     for(ActiveEnemy& enemy : _active_enemies)
     {
         if(enemy.occupied && enemy.type == type && enemy.pool_index == pool_index)
@@ -120,7 +120,7 @@ ActiveEnemy& EnemyRuntime::register_enemy(EnemyType type, uint8_t pool_index, Sp
     return _active_enemies[0];
 }
 
-SpatialActorId EnemyRuntime::actor_id(EnemyType type, uint8_t pool_index) const
+SpatialActorId EnemyRuntime::_actor_id(EnemyType type, uint8_t pool_index) const
 {
     switch(type)
     {
