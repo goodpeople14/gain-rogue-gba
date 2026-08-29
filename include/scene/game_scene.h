@@ -17,6 +17,7 @@
 #include "debug/collision_debug_overlay.h"
 #include "debug/spatial_debug_overlay.h"
 #include "world/battlefield.h"
+#include "world/stage_definition.h"
 #include "world/spatial_manager.h"
 
 class GameScene
@@ -47,12 +48,6 @@ public:
 private:
     static constexpr int max_player_hud_name_length = 16;
     static constexpr int max_player_health_hud_cells = 8;
-
-    enum class StageId
-    {
-        STAGE_1,
-        STAGE_2
-    };
 
     void _start_stage(StageId stage);
     void _update_stage_phase();
