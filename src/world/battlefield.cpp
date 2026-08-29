@@ -16,11 +16,11 @@ Battlefield::Battlefield() :
 
 void Battlefield::set_visible(bool visible)
 {
-    _stage1_background.set_visible(visible && _stage == StageVisual::STAGE_1);
-    _stage2_background.set_visible(visible && _stage == StageVisual::STAGE_2);
+    _stage1_background.set_visible(visible && _stage == StageVisualId::STAGE_1);
+    _stage2_background.set_visible(visible && _stage == StageVisualId::STAGE_2);
 }
 
-void Battlefield::set_stage(StageVisual stage)
+void Battlefield::set_stage(StageVisualId stage)
 {
     _stage = stage;
     set_visible(true);

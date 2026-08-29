@@ -22,18 +22,6 @@ namespace
 {
     constexpr bn::color game_background_color(3, 12, 7);
     constexpr int player_size = 16;
-    constexpr int player_start_x = 0;
-    constexpr int player_start_y = 56;
-    constexpr bn::array<bn::fixed_point, GameScene::goblin_count> goblin_home_positions = {{
-        { -48, -40 }, { 48, -40 }, { -40, -4 }, { 40, -4 }
-    }};
-    constexpr bn::array<int, GameScene::goblin_count> goblin_target_ids = {{ 10, 11, 12, 13 }};
-    constexpr bn::array<bn::fixed_point, GameScene::crossbow_goblin_count> crossbow_goblin_home_positions = {{
-        { 0, -48 }, { 0, -48 }, { 0, -48 }, { 0, -48 }
-    }};
-    constexpr bn::array<int, GameScene::crossbow_goblin_count> crossbow_goblin_target_ids = {{ 14, 15, 16, 17 }};
-    constexpr int stage1_active_goblin_count = 4;
-    constexpr int stage1_active_crossbow_goblin_count = 1;
     constexpr int stage2_active_goblin_count = 2;
     constexpr int stage2_active_crossbow_goblin_count = 4;
     constexpr bool stage_enemy_respawn_enabled = false;
@@ -82,61 +70,7 @@ namespace
 
         types.push_back(type);
     }
-    constexpr bn::array<SpatialActorId, GameScene::goblin_count> goblin_spatial_actor_ids = {{
-        SpatialActorId::ACTOR_0, SpatialActorId::ACTOR_1,
-        SpatialActorId::ACTOR_2, SpatialActorId::ACTOR_3
-    }};
-    constexpr bn::array<SpatialActorId, GameScene::crossbow_goblin_count> crossbow_spatial_actor_ids = {{
-        SpatialActorId::ACTOR_4, SpatialActorId::ACTOR_5,
-        SpatialActorId::ACTOR_6, SpatialActorId::ACTOR_7
-    }};
-
     constexpr MovementBounds player_bounds = Battlefield::movement_bounds(player_size, player_size);
-
-    [[nodiscard]] constexpr bool stage1_spawn_cell_is_walkable(const bn::fixed_point& position)
-    {
-        int cell_x = stage_cell_from_world_coordinate(stage1::data, int(position.x()));
-        int cell_y = stage_cell_from_world_coordinate(stage1::data, int(position.y()));
-        return stage_cell_in_bounds(stage1::data, cell_x, cell_y) &&
-               stage_cell_at(stage1::data, cell_x, cell_y) == StageCell::WALKABLE;
-    }
-
-    [[nodiscard]] constexpr bool stage1_spawns_are_separated()
-    {
-        constexpr WorldBox player_pushbox = { { player_start_x, player_start_y + 1 }, 8, 8 };
-        constexpr WorldBox crossbow_pushbox = { { 0, -45 }, 6, 6 };
-        constexpr WorldBox goblin_pushboxes[GameScene::goblin_count] = {
-            { { -48, -37 }, 6, 6 }, { { 48, -37 }, 6, 6 },
-            { { -40, -1 }, 6, 6 }, { { 40, -1 }, 6, 6 }
-        };
-
-        if(overlaps_strictly(player_pushbox, crossbow_pushbox) ||
-           overlaps_strictly(player_pushbox, stage1::static_obstacle_boxes[0]) ||
-           overlaps_strictly(crossbow_pushbox, stage1::static_obstacle_boxes[0]))
-        {
-            return false;
-        }
-
-        for(int first = 0; first < GameScene::goblin_count; ++first)
-        {
-            if(overlaps_strictly(player_pushbox, goblin_pushboxes[first]) ||
-               overlaps_strictly(crossbow_pushbox, goblin_pushboxes[first]) ||
-               overlaps_strictly(goblin_pushboxes[first], stage1::static_obstacle_boxes[0]))
-            {
-                return false;
-            }
-
-            for(int second = first + 1; second < GameScene::goblin_count; ++second)
-            {
-                if(overlaps_strictly(goblin_pushboxes[first], goblin_pushboxes[second]))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
 
     [[nodiscard]] constexpr bool stage2_spawn_cell_is_walkable(
             const StageData& stage, const bn::fixed_point& position)
@@ -345,59 +279,11 @@ namespace
         return phase;
     }
 
-    [[nodiscard]] constexpr bool goblin_target_ids_are_unique()
-    {
-        for(int first = 0; first < GameScene::goblin_count; ++first)
-        {
-            if(goblin_target_ids[first] == 0)
-            {
-                return false;
-            }
-
-            for(int second = first + 1; second < GameScene::goblin_count; ++second)
-            {
-                if(goblin_target_ids[first] == goblin_target_ids[second])
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] constexpr bool crossbow_target_ids_are_unique()
-    {
-        for(int first = 0; first < GameScene::crossbow_goblin_count; ++first)
-        {
-            for(int second = first + 1; second < GameScene::crossbow_goblin_count; ++second)
-            {
-                if(crossbow_goblin_target_ids[first] == crossbow_goblin_target_ids[second])
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     static_assert(player_bounds.min_x == -72 && player_bounds.max_x == 72);
     static_assert(player_bounds.min_y == -72 && player_bounds.max_y == 72);
-    static_assert(goblin_target_ids_are_unique());
-    static_assert(crossbow_target_ids_are_unique());
-    static_assert(stage1_active_goblin_count == GameScene::goblin_count);
-    static_assert(stage1_active_crossbow_goblin_count == 1);
     static_assert(stage2_active_goblin_count == 2);
     static_assert(stage2_active_crossbow_goblin_count == GameScene::crossbow_goblin_count);
     static_assert(GameScene::enemy_count + 1 == SpatialManager::actor_count);
-    static_assert(stage1_spawn_cell_is_walkable({ player_start_x, player_start_y }));
-    static_assert(stage1_spawn_cell_is_walkable(crossbow_goblin_home_positions[0]));
-    static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[0]));
-    static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[1]));
-    static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[2]));
-    static_assert(stage1_spawn_cell_is_walkable(goblin_home_positions[3]));
-    static_assert(stage1_spawns_are_separated());
     static_assert(stage2_spawn_cell_is_walkable(stage2::ground_data, stage2::player_spawn));
     static_assert(stage2_spawn_cell_is_walkable(stage2::ground_data, stage2::goblin_spawns[0]));
     static_assert(stage2_spawn_cell_is_walkable(stage2::ground_data, stage2::goblin_spawns[1]));
@@ -436,16 +322,16 @@ namespace
 }
 
 GameScene::GameScene() :
-    _player(bn::fixed_point(player_start_x, player_start_y)),
+    _player(stage1::definition.player_spawn),
     _player_bounds(player_bounds),
-    _enemy_runtime(goblin_home_positions, goblin_target_ids,
-                   crossbow_goblin_home_positions, crossbow_goblin_target_ids),
+    _enemy_runtime(),
     _stage_glyph_tiles(make_stage_glyph_tiles()),
     // This shares the title glyph palette and keeps it alive after TitleScene::hide().
     _stage_glyph_palette(stage_glyph_item.palette_item().create_palette()),
     _player_health_tiles(make_player_health_tiles()),
-    _spatial_debug_overlay(stage1::data),
-    _spatial_manager(stage1::data, stage1::static_obstacles, stage1::data, stage1::static_obstacles)
+    _spatial_debug_overlay(stage1::definition.ground_stage),
+    _spatial_manager(stage1::definition.ground_stage, stage1::definition.ground_static_obstacles,
+                     stage1::definition.upper_stage, stage1::definition.upper_static_obstacles)
 {
     int health_x = player_health_hud_x;
     const CharacterDefinition& player_definition = _player.definition();
@@ -622,64 +508,105 @@ void GameScene::_start_stage(StageId stage)
     BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", stage_number, " entered");
 #endif
 
-    _battlefield.set_stage(_stage == StageId::STAGE_1 ? Battlefield::StageVisual::STAGE_1 :
-                           Battlefield::StageVisual::STAGE_2);
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
     _enemy_runtime.clear_roster();
-    const StageData& ground_stage_data = _stage == StageId::STAGE_1 ? stage1::data : stage2::ground_data;
-    const StageStaticObstacleData& ground_static_obstacles =
-            _stage == StageId::STAGE_1 ? stage1::static_obstacles : stage2::ground_static_obstacles;
-    const StageData& upper_stage_data = _stage == StageId::STAGE_1 ? stage1::data : stage2::upper_data;
-    const StageStaticObstacleData& upper_static_obstacles =
-            _stage == StageId::STAGE_1 ? stage1::static_obstacles : stage2::upper_static_obstacles;
-    bn::fixed_point player_spawn = _stage == StageId::STAGE_1 ?
-            bn::fixed_point(player_start_x, player_start_y) : stage2::player_spawn;
-    _spatial_manager.set_stage(ground_stage_data, ground_static_obstacles, upper_stage_data, upper_static_obstacles);
-    _spatial_debug_overlay.set_stage(ground_stage_data);
-    _player.apply_movement(player_spawn, Direction::DOWN);
-    _player.set_spatial_layer(SpatialLayer::GROUND);
-    _player.set_visible(true);
-
-    int active_goblin_count = _stage == StageId::STAGE_1 ? stage1_active_goblin_count : stage2_active_goblin_count;
-    for(int index = 0; index < goblin_count; ++index)
+    if(_stage == StageId::STAGE_1)
     {
-        Goblin& goblin = _goblins[index];
-        if(index < active_goblin_count)
-        {
-            const bn::fixed_point& spawn = _stage == StageId::STAGE_1 ? goblin_home_positions[index] :
-                    stage2::goblin_spawns[index];
-            goblin.set_home_position(spawn);
-            goblin.set_spatial_layer(SpatialLayer::GROUND);
-            goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
-            goblin.enter();
-            _enemy_runtime.register_enemy(EnemyType::GOBLIN, uint8_t(index), goblin_spatial_actor_ids[index]);
-        }
-        else
+        const StageDefinition& definition = stage1::definition;
+        _battlefield.set_stage(definition.visual);
+        _spatial_manager.set_stage(definition.ground_stage, definition.ground_static_obstacles,
+                                   definition.upper_stage, definition.upper_static_obstacles);
+        _spatial_debug_overlay.set_stage(definition.ground_stage);
+        _player.apply_movement(definition.player_spawn, Direction::DOWN);
+        _player.set_spatial_layer(definition.player_layer);
+        _player.set_visible(true);
+
+        for(Goblin& goblin : _goblins)
         {
             goblin.deactivate();
         }
-    }
-    int active_crossbow_goblin_count = _stage == StageId::STAGE_1 ?
-            stage1_active_crossbow_goblin_count : stage2_active_crossbow_goblin_count;
-    for(int index = 0; index < crossbow_goblin_count; ++index)
-    {
-        CrossbowGoblin& crossbow_goblin = _crossbow_goblins[index];
-        if(index < active_crossbow_goblin_count)
-        {
-            const bn::fixed_point& spawn = _stage == StageId::STAGE_1 ? crossbow_goblin_home_positions[index] :
-                    stage2::crossbow_spawns[index];
-            crossbow_goblin.set_home_position(spawn);
-            crossbow_goblin.set_spatial_layer(_stage == StageId::STAGE_2 ?
-                                            SpatialLayer::UPPER : SpatialLayer::GROUND);
-            crossbow_goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
-            crossbow_goblin.enter();
-            _enemy_runtime.register_enemy(EnemyType::CROSSBOW, uint8_t(index),
-                                           crossbow_spatial_actor_ids[index]);
-        }
-        else
+        for(CrossbowGoblin& crossbow_goblin : _crossbow_goblins)
         {
             crossbow_goblin.deactivate();
+        }
+
+        for(int index = 0; index < definition.enemy_spawn_count; ++index)
+        {
+            const StageEnemySpawn& spawn = definition.enemy_spawns[index];
+            ActiveEnemy& slot = _enemy_runtime.allocate_enemy(spawn.type);
+            switch(spawn.type)
+            {
+            case EnemyType::GOBLIN:
+            {
+                Goblin& goblin = _goblins[slot.pool_index];
+                goblin.set_home_position(spawn.position);
+                goblin.set_spatial_layer(spawn.layer);
+                goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+                goblin.enter();
+                break;
+            }
+            case EnemyType::CROSSBOW:
+            {
+                CrossbowGoblin& crossbow_goblin = _crossbow_goblins[slot.pool_index];
+                crossbow_goblin.set_home_position(spawn.position);
+                crossbow_goblin.set_spatial_layer(spawn.layer);
+                crossbow_goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+                crossbow_goblin.enter();
+                break;
+            }
+            case EnemyType::NONE:
+                BN_ASSERT(false, "Stage enemy spawn has no type");
+                break;
+            default:
+                BN_ASSERT(false, "Unknown stage enemy type");
+                break;
+            }
+        }
+    }
+    else
+    {
+        _battlefield.set_stage(StageVisualId::STAGE_2);
+        _spatial_manager.set_stage(stage2::ground_data, stage2::ground_static_obstacles,
+                                   stage2::upper_data, stage2::upper_static_obstacles);
+        _spatial_debug_overlay.set_stage(stage2::ground_data);
+        _player.apply_movement(stage2::player_spawn, Direction::DOWN);
+        _player.set_spatial_layer(SpatialLayer::GROUND);
+        _player.set_visible(true);
+
+        for(int index = 0; index < goblin_count; ++index)
+        {
+            Goblin& goblin = _goblins[index];
+            if(index < stage2_active_goblin_count)
+            {
+                goblin.set_home_position(stage2::goblin_spawns[index]);
+                goblin.set_spatial_layer(SpatialLayer::GROUND);
+                goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+                goblin.enter();
+                _enemy_runtime.register_enemy(EnemyType::GOBLIN, uint8_t(index),
+                                               _enemy_runtime.actor_id(EnemyType::GOBLIN, uint8_t(index)));
+            }
+            else
+            {
+                goblin.deactivate();
+            }
+        }
+        for(int index = 0; index < crossbow_goblin_count; ++index)
+        {
+            CrossbowGoblin& crossbow_goblin = _crossbow_goblins[index];
+            if(index < stage2_active_crossbow_goblin_count)
+            {
+                crossbow_goblin.set_home_position(stage2::crossbow_spawns[index]);
+                crossbow_goblin.set_spatial_layer(SpatialLayer::UPPER);
+                crossbow_goblin.set_respawn_enabled(stage_enemy_respawn_enabled);
+                crossbow_goblin.enter();
+                _enemy_runtime.register_enemy(EnemyType::CROSSBOW, uint8_t(index),
+                                               _enemy_runtime.actor_id(EnemyType::CROSSBOW, uint8_t(index)));
+            }
+            else
+            {
+                crossbow_goblin.deactivate();
+            }
         }
     }
 
@@ -874,7 +801,7 @@ void GameScene::_update_cleared()
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    const WorldBox& exit_box = _stage == StageId::STAGE_1 ? stage1::exit_box : stage2::exit_box;
+    const WorldBox& exit_box = _stage == StageId::STAGE_1 ? stage1::definition.exit_box : stage2::exit_box;
     if(touches_or_intersects(player_pushbox, exit_box))
     {
         if(_stage == StageId::STAGE_1)
@@ -1234,13 +1161,14 @@ void GameScene::_sync_spatial_actors()
     for(int index = 0; index < goblin_count; ++index)
     {
         const Goblin& goblin = _goblins[index];
-        _sync_spatial_actor(goblin_spatial_actor_ids[index], goblin.world_pushbox(),
+        _sync_spatial_actor(_enemy_runtime.actor_id(EnemyType::GOBLIN, uint8_t(index)), goblin.world_pushbox(),
                             goblin.spatial_layer(), goblin.active());
     }
     for(int index = 0; index < crossbow_goblin_count; ++index)
     {
         const CrossbowGoblin& crossbow_goblin = _crossbow_goblins[index];
-        _sync_spatial_actor(crossbow_spatial_actor_ids[index], crossbow_goblin.world_pushbox(),
+        _sync_spatial_actor(_enemy_runtime.actor_id(EnemyType::CROSSBOW, uint8_t(index)),
+                            crossbow_goblin.world_pushbox(),
                             crossbow_goblin.spatial_layer(), crossbow_goblin.active());
     }
 

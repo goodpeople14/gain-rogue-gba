@@ -6,14 +6,8 @@
 
 #include "character/crossbow_goblin.h"
 #include "character/goblin.h"
+#include "enemy/enemy_type.h"
 #include "world/spatial_manager.h"
-
-enum class EnemyType : uint8_t
-{
-    NONE,
-    GOBLIN,
-    CROSSBOW
-};
 
 struct ActiveEnemy
 {
@@ -30,10 +24,7 @@ public:
     static constexpr int crossbow_goblin_count = 4;
     static constexpr int active_enemy_capacity = 60;
 
-    EnemyRuntime(const bn::array<bn::fixed_point, goblin_count>& goblin_home_positions,
-                 const bn::array<int, goblin_count>& goblin_target_ids,
-                 const bn::array<bn::fixed_point, crossbow_goblin_count>& crossbow_home_positions,
-                 const bn::array<int, crossbow_goblin_count>& crossbow_target_ids);
+    EnemyRuntime();
 
     bn::array<Goblin, goblin_count>& goblins();
     const bn::array<Goblin, goblin_count>& goblins() const;
@@ -42,7 +33,9 @@ public:
 
     ActiveEnemy& active_enemy(int index);
     const ActiveEnemy& active_enemy(int index) const;
-    void register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
+    ActiveEnemy& allocate_enemy(EnemyType type);
+    ActiveEnemy& register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
+    [[nodiscard]] SpatialActorId actor_id(EnemyType type, uint8_t pool_index) const;
     void clear_roster();
     [[nodiscard]] int roster_count() const;
 

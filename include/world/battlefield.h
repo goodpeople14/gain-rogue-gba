@@ -3,6 +3,8 @@
 
 #include "bn_regular_bg_ptr.h"
 
+#include "world/stage_definition.h"
+
 struct MovementBounds
 {
     int min_x;
@@ -14,7 +16,6 @@ struct MovementBounds
 class Battlefield
 {
 public:
-    enum class StageVisual { STAGE_1, STAGE_2 };
     static constexpr int screen_width = 240;
     static constexpr int screen_height = 160;
     static constexpr int ui_panel_width = 40;
@@ -24,7 +25,7 @@ public:
     Battlefield();
 
     void set_visible(bool visible);
-    void set_stage(StageVisual stage);
+    void set_stage(StageVisualId stage);
 
     [[nodiscard]] static constexpr MovementBounds movement_bounds(int character_width, int character_height)
     {
@@ -42,7 +43,7 @@ public:
 private:
     bn::regular_bg_ptr _stage1_background;
     bn::regular_bg_ptr _stage2_background;
-    StageVisual _stage = StageVisual::STAGE_1;
+    StageVisualId _stage = StageVisualId::STAGE_1;
 };
 
 #endif
