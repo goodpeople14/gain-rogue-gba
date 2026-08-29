@@ -90,7 +90,7 @@ namespace
         return result;
     }
 
-    constexpr bn::array<bn::tile, 20> stage_glyph_tiles = {
+    constexpr bn::array<bn::tile, 23> stage_glyph_tiles = {
         make_stage_glyph({ 14, 17, 17, 31, 17, 17, 17 }),  // A
         make_stage_glyph({ 30, 17, 17, 17, 17, 17, 30 }),  // D
         make_stage_glyph({ 31, 16, 16, 30, 16, 16, 31 }),  // E
@@ -105,6 +105,9 @@ namespace
         make_stage_glyph({ 15, 16, 16, 14, 1, 1, 30 }),    // S
         make_stage_glyph({ 4, 12, 4, 4, 4, 4, 14 }),       // 1
         make_stage_glyph({ 14, 17, 1, 2, 4, 8, 31 }),      // 2
+        make_stage_glyph({ 30, 1, 1, 14, 1, 1, 30 }),      // 3
+        make_stage_glyph({ 2, 6, 10, 18, 31, 2, 2 }),      // 4
+        make_stage_glyph({ 31, 16, 30, 1, 1, 17, 14 }),    // 5
         make_stage_glyph({ 15, 16, 16, 16, 16, 16, 15 }),  // C
         make_stage_glyph({ 16, 16, 16, 16, 16, 16, 31 }),  // L
         make_stage_glyph({ 17, 27, 21, 17, 17, 17, 17 }),  // M
@@ -162,7 +165,9 @@ namespace
             stage_glyph_item.tiles_item().create_tiles(12), stage_glyph_item.tiles_item().create_tiles(13),
             stage_glyph_item.tiles_item().create_tiles(14), stage_glyph_item.tiles_item().create_tiles(15),
             stage_glyph_item.tiles_item().create_tiles(16), stage_glyph_item.tiles_item().create_tiles(17),
-            stage_glyph_item.tiles_item().create_tiles(18), stage_glyph_item.tiles_item().create_tiles(19)
+            stage_glyph_item.tiles_item().create_tiles(18), stage_glyph_item.tiles_item().create_tiles(19),
+            stage_glyph_item.tiles_item().create_tiles(20), stage_glyph_item.tiles_item().create_tiles(21),
+            stage_glyph_item.tiles_item().create_tiles(22)
         }};
     }
 
@@ -189,14 +194,22 @@ namespace
         case 'S': return 11;
         case '1': return 12;
         case '2': return 13;
-        case 'C': return 14;
-        case 'L': return 15;
-        case 'M': return 16;
-        case 'N': return 17;
-        case 'U': return 18;
-        case 'V': return 19;
+        case '3': return 14;
+        case '4': return 15;
+        case '5': return 16;
+        case 'C': return 17;
+        case 'L': return 18;
+        case 'M': return 19;
+        case 'N': return 20;
+        case 'U': return 21;
+        case 'V': return 22;
         default: return -1;
         }
+    }
+
+    [[nodiscard]] constexpr int stage_number(StageId stage)
+    {
+        return int(stage) + 1;
     }
 
     [[nodiscard]] constexpr bool phase_runs_gameplay(GameScene::StagePhase phase)
@@ -270,6 +283,19 @@ namespace
     static_assert(! phase_runs_gameplay(GameScene::StagePhase::GO));
     static_assert(phase_runs_gameplay(GameScene::StagePhase::PLAYING));
     static_assert(phase_allows_player_movement(GameScene::StagePhase::CLEARED));
+    static_assert(int(StageId::STAGE_1) == 0);
+    static_assert(int(StageId::STAGE_2) == 1);
+    static_assert(int(StageId::STAGE_3) == 2);
+    static_assert(int(StageId::STAGE_4) == 3);
+    static_assert(int(StageId::STAGE_5) == 4);
+    static_assert(stage_number(StageId::STAGE_1) == 1);
+    static_assert(stage_number(StageId::STAGE_2) == 2);
+    static_assert(stage_number(StageId::STAGE_3) == 3);
+    static_assert(stage_number(StageId::STAGE_4) == 4);
+    static_assert(stage_number(StageId::STAGE_5) == 5);
+    static_assert(stage_glyph_index('3') >= 0);
+    static_assert(stage_glyph_index('4') >= 0);
+    static_assert(stage_glyph_index('5') >= 0);
     static_assert(stage_glyph_index('V') >= 0);
 }
 
@@ -365,15 +391,15 @@ bool GameScene::update()
 
     if(_debug_log_frame_count % 60 == 0)
     {
-        int stage_number = _stage == StageId::STAGE_1 ? 1 : 2;
+        int current_stage_number = stage_number(_stage);
 
     #if defined(GAIN_DEBUG_LOGS)
-        BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", stage_number,
+        BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", current_stage_number,
                      " frame=", _debug_log_frame_count);
     #endif
 
     #if defined(GAIN_PERF_DEBUG_LOGS)
-        BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", stage_number,
+        BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", current_stage_number,
                      " frame=", _debug_log_frame_count);
     #endif
     }
@@ -451,15 +477,15 @@ void GameScene::_start_stage(StageId stage)
     _stage = stage;
 
 #if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
-    int stage_number = _stage == StageId::STAGE_1 ? 1 : 2;
+    int current_stage_number = stage_number(_stage);
 #endif
 
 #if defined(GAIN_DEBUG_LOGS)
-    BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", stage_number, " entered");
+    BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", current_stage_number, " entered");
 #endif
 
 #if defined(GAIN_PERF_DEBUG_LOGS)
-    BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", stage_number, " entered");
+    BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", current_stage_number, " entered");
 #endif
 
     _stage_phase = StagePhase::INTRO;
@@ -523,7 +549,9 @@ void GameScene::_start_stage(StageId stage)
     _spatial_debug_overlay.set_visible(_collision_debug_overlay.enabled());
     _validate_debug_enemy_type();
     _sync_spatial_actors();
-    _set_stage_message(_stage == StageId::STAGE_1 ? "STAGE 1" : "STAGE 2", 7, stage_message_y, 16, 2);
+    char stage_text[] = "STAGE 0";
+    stage_text[6] = char('0' + stage_number(_stage));
+    _set_stage_message(stage_text, 7, stage_message_y, 16, 2);
 }
 
 void GameScene::_update_stage_phase()
@@ -714,6 +742,10 @@ void GameScene::_update_cleared()
         if(_stage == StageId::STAGE_1)
         {
             _start_stage(StageId::STAGE_2);
+        }
+        else if(_stage == StageId::STAGE_2)
+        {
+            _start_stage(StageId::STAGE_3);
         }
         else
         {

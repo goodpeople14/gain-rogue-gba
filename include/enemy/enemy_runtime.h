@@ -20,8 +20,8 @@ struct ActiveEnemy
 class EnemyRuntime
 {
 public:
-    static constexpr int goblin_count = 4;
-    static constexpr int crossbow_goblin_count = 4;
+    static constexpr int goblin_count = 16;
+    static constexpr int crossbow_goblin_count = 16;
     static constexpr int active_enemy_capacity = 60;
 
     EnemyRuntime();
@@ -39,7 +39,7 @@ public:
 
 private:
     ActiveEnemy& _register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id);
-    [[nodiscard]] SpatialActorId _actor_id(EnemyType type, uint8_t pool_index) const;
+    [[nodiscard]] SpatialActorId _allocate_actor_id() const;
     bn::array<Goblin, goblin_count> _goblins;
     bn::array<CrossbowGoblin, crossbow_goblin_count> _crossbow_goblins;
     bn::array<ActiveEnemy, active_enemy_capacity> _active_enemies = {};

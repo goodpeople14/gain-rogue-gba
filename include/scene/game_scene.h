@@ -23,9 +23,8 @@
 class GameScene
 {
 public:
-    static constexpr int goblin_count = 4;
-    static constexpr int crossbow_goblin_count = 4;
-    static constexpr int enemy_count = goblin_count + crossbow_goblin_count;
+    static constexpr int max_active_enemy_count = SpatialManager::actor_count - 1;
+    static constexpr int enemy_count = max_active_enemy_count;
 
     enum class StagePhase
     {
@@ -80,7 +79,7 @@ private:
     EnemyRuntime _enemy_runtime;
     CrossbowProjectilePool _crossbow_projectiles;
     HitEffectManager _hit_effects;
-    bn::array<bn::sprite_tiles_ptr, 20> _stage_glyph_tiles;
+    bn::array<bn::sprite_tiles_ptr, 23> _stage_glyph_tiles;
     bn::sprite_palette_ptr _stage_glyph_palette;
     bn::array<bn::sprite_tiles_ptr, 2> _player_health_tiles;
     bn::vector<bn::sprite_ptr, max_player_hud_name_length> _player_name_sprites;

@@ -5,21 +5,24 @@
 namespace
 {
     constexpr bn::fixed_point initial_home_position(0, 0);
-    constexpr int goblin_target_ids[EnemyRuntime::goblin_count] = { 10, 11, 12, 13 };
-    constexpr int crossbow_goblin_target_ids[EnemyRuntime::crossbow_goblin_count] = { 14, 15, 16, 17 };
-    constexpr SpatialActorId goblin_actor_ids[EnemyRuntime::goblin_count] = {
-        SpatialActorId::ACTOR_0, SpatialActorId::ACTOR_1,
-        SpatialActorId::ACTOR_2, SpatialActorId::ACTOR_3
+    constexpr int goblin_target_ids[EnemyRuntime::goblin_count] = {
+        10, 11, 12, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23, 24, 25
     };
-    constexpr SpatialActorId crossbow_goblin_actor_ids[EnemyRuntime::crossbow_goblin_count] = {
-        SpatialActorId::ACTOR_4, SpatialActorId::ACTOR_5,
-        SpatialActorId::ACTOR_6, SpatialActorId::ACTOR_7
+    constexpr int crossbow_goblin_target_ids[EnemyRuntime::crossbow_goblin_count] = {
+        26, 27, 28, 29, 30, 31, 32, 33,
+        34, 35, 36, 37, 38, 39, 40, 41
     };
 }
 
 static_assert(sizeof(EnemyType) == 1);
 static_assert(sizeof(ActiveEnemy) == 4);
 static_assert(EnemyRuntime::active_enemy_capacity == 60);
+static_assert(EnemyRuntime::goblin_count == 16);
+static_assert(EnemyRuntime::crossbow_goblin_count == 16);
+static_assert(SpatialManager::actor_count == 17);
+static_assert(EnemyRuntime::goblin_count >= SpatialManager::actor_count - 1);
+static_assert(EnemyRuntime::crossbow_goblin_count >= SpatialManager::actor_count - 1);
 static_assert(uint8_t(EnemyType::GOBLIN) != uint8_t(EnemyType::CROSSBOW));
 
 EnemyRuntime::EnemyRuntime() :
@@ -27,13 +30,37 @@ EnemyRuntime::EnemyRuntime() :
         Goblin(initial_home_position, goblin_target_ids[0]),
         Goblin(initial_home_position, goblin_target_ids[1]),
         Goblin(initial_home_position, goblin_target_ids[2]),
-        Goblin(initial_home_position, goblin_target_ids[3])
+        Goblin(initial_home_position, goblin_target_ids[3]),
+        Goblin(initial_home_position, goblin_target_ids[4]),
+        Goblin(initial_home_position, goblin_target_ids[5]),
+        Goblin(initial_home_position, goblin_target_ids[6]),
+        Goblin(initial_home_position, goblin_target_ids[7]),
+        Goblin(initial_home_position, goblin_target_ids[8]),
+        Goblin(initial_home_position, goblin_target_ids[9]),
+        Goblin(initial_home_position, goblin_target_ids[10]),
+        Goblin(initial_home_position, goblin_target_ids[11]),
+        Goblin(initial_home_position, goblin_target_ids[12]),
+        Goblin(initial_home_position, goblin_target_ids[13]),
+        Goblin(initial_home_position, goblin_target_ids[14]),
+        Goblin(initial_home_position, goblin_target_ids[15])
     }},
     _crossbow_goblins{{
         CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[0]),
         CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[1]),
         CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[2]),
-        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[3])
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[3]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[4]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[5]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[6]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[7]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[8]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[9]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[10]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[11]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[12]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[13]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[14]),
+        CrossbowGoblin(initial_home_position, crossbow_goblin_target_ids[15])
     }}
 {
 }
@@ -85,7 +112,7 @@ ActiveEnemy& EnemyRuntime::allocate_enemy(EnemyType type)
         }
         if(! allocated)
         {
-            return _register_enemy(type, uint8_t(pool_index), _actor_id(type, uint8_t(pool_index)));
+            return _register_enemy(type, uint8_t(pool_index), _allocate_actor_id());
         }
     }
 
@@ -95,7 +122,6 @@ ActiveEnemy& EnemyRuntime::allocate_enemy(EnemyType type)
 
 ActiveEnemy& EnemyRuntime::_register_enemy(EnemyType type, uint8_t pool_index, SpatialActorId actor_id)
 {
-    BN_ASSERT(actor_id == _actor_id(type, pool_index), "Unexpected enemy actor id");
     for(ActiveEnemy& enemy : _active_enemies)
     {
         if(enemy.occupied && enemy.type == type && enemy.pool_index == pool_index)
@@ -120,23 +146,23 @@ ActiveEnemy& EnemyRuntime::_register_enemy(EnemyType type, uint8_t pool_index, S
     return _active_enemies[0];
 }
 
-SpatialActorId EnemyRuntime::_actor_id(EnemyType type, uint8_t pool_index) const
+SpatialActorId EnemyRuntime::_allocate_actor_id() const
 {
-    switch(type)
+    for(int index = int(SpatialActorId::ACTOR_0); index < SpatialManager::actor_count; ++index)
     {
-    case EnemyType::GOBLIN:
-        BN_ASSERT(pool_index < goblin_count);
-        return goblin_actor_ids[pool_index];
-    case EnemyType::CROSSBOW:
-        BN_ASSERT(pool_index < crossbow_goblin_count);
-        return crossbow_goblin_actor_ids[pool_index];
-    case EnemyType::NONE:
-        break;
-    default:
-        break;
+        const SpatialActorId actor_id = SpatialActorId(index);
+        bool allocated = false;
+        for(const ActiveEnemy& enemy : _active_enemies)
+        {
+            allocated |= enemy.occupied && enemy.actor_id == actor_id;
+        }
+        if(! allocated)
+        {
+            return actor_id;
+        }
     }
 
-    BN_ASSERT(false, "Unsupported enemy type");
+    BN_ASSERT(false, "Spatial actor slots exhausted");
     return SpatialActorId::PLAYER;
 }
 
