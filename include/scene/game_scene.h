@@ -77,6 +77,11 @@ private:
                              SpatialLayer layer, bool active);
     [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    void _finish_perf_frame();
+    void _log_perf_window();
+#endif
+
     Battlefield _battlefield;
     Swordsman _player;
     PlayerController _player_controller;
@@ -99,7 +104,7 @@ private:
     bn::optional<int> _debug_enemy_actor_id;
     int _phase_frames_remaining = 0;
 
-#if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
+#if defined(GAIN_DEBUG_LOGS)
     int _debug_log_frame_count = 0;
 #endif
 };

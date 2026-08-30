@@ -8,7 +8,11 @@ void GameSession::start_new_run()
 
 void GameSession::complete_current_stage()
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    if(_current_stage == StageId::STAGE_5)
+#else
     if(_current_stage == StageId::STAGE_3)
+#endif
     {
         _run_state = RunState::CLEARED;
     }
@@ -19,7 +23,11 @@ bool GameSession::advance_after_stage_result()
     switch(_current_stage)
     {
     case StageId::STAGE_1:
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        _current_stage = StageId::STAGE_3;
+#else
         _current_stage = StageId::STAGE_2;
+#endif
         return true;
 
     case StageId::STAGE_2:
@@ -27,9 +35,21 @@ bool GameSession::advance_after_stage_result()
         return true;
 
     case StageId::STAGE_3:
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        _current_stage = StageId::STAGE_4;
+        return true;
+#else
         return false;
+#endif
 
     case StageId::STAGE_4:
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        _current_stage = StageId::STAGE_5;
+        return true;
+#else
+        return false;
+#endif
+
     case StageId::STAGE_5:
         return false;
 

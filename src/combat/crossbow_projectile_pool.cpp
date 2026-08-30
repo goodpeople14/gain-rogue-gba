@@ -5,6 +5,10 @@
 #include "combat/collision/collision_math.h"
 #include "combat/hit_effect_manager.h"
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    #include "debug/perf_stats.h"
+#endif
+
 namespace
 {
     constexpr int flight_frames = 36;
@@ -42,6 +46,9 @@ namespace
 void CrossbowProjectilePool::spawn(
         int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target)
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().projectile_spawn_attempts;
+#endif
     for(Slot& slot : _slots)
     {
         if(! slot.sprite)
@@ -54,19 +61,33 @@ void CrossbowProjectilePool::spawn(
             slot.ticks = 0;
             slot.landing = false;
             slot.hit_resolved = false;
+#if defined(GAIN_PERF_DEBUG_LOGS)
+            ++perf_stats().projectile_spawn_success;
+#endif
             return;
         }
     }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().projectile_spawn_dropped_pool_full;
+#endif
 }
 
 void CrossbowProjectilePool::update()
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    int active_count = 0;
+#endif
     for(Slot& slot : _slots)
     {
         if(! slot.sprite)
         {
             continue;
         }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++active_count;
+#endif
 
         if(slot.landing)
         {
@@ -86,6 +107,13 @@ void CrossbowProjectilePool::update()
                                  interpolate(slot.start.y(), slot.target.y(), slot.ticks) - height_offset(slot.ticks));
         slot.sprite->set_position(position);
     }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    if(active_count > perf_stats().active_projectile_max)
+    {
+        perf_stats().active_projectile_max = active_count;
+    }
+#endif
 }
 
 int CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_position,

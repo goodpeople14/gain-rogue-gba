@@ -4,6 +4,10 @@
 
 #include "combat/collision/collision_math.h"
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    #include "debug/perf_stats.h"
+#endif
+
 namespace
 {
     [[nodiscard]] constexpr int actor_index(SpatialActorId actor_id)
@@ -201,6 +205,13 @@ void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox,
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    if(actor.active && actor.pushbox.center == pushbox.center && actor.pushbox.width == pushbox.width &&
+       actor.pushbox.height == pushbox.height && actor.layer == layer)
+    {
+        ++perf_stats().spatial_sync_noops;
+    }
+#endif
     if(actor.active)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
@@ -267,6 +278,9 @@ void SpatialManager::_clear_position_table()
 
 void SpatialManager::_remove_actor_from_position_table(SpatialActorId actor_id, const WorldBox& pushbox)
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().position_remove_calls;
+#endif
     PositionCellRange range = _stage_cell_range(pushbox);
     if(range.min_x > range.max_x || range.min_y > range.max_y)
     {
@@ -293,6 +307,9 @@ void SpatialManager::_remove_actor_from_position_table(SpatialActorId actor_id, 
 
 void SpatialManager::_register_actor_in_position_table(SpatialActorId actor_id, const WorldBox& pushbox)
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().position_register_calls;
+#endif
     PositionCellRange range = _stage_cell_range(pushbox);
     if(range.min_x > range.max_x || range.min_y > range.max_y)
     {
@@ -387,6 +404,9 @@ void SpatialManager::validate_position_table() const
 WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         SpatialActorId actor_id, const WorldBox& movement_area) const
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().movement_query_calls;
+#endif
     WorldBoxList<max_movement_obstacles> result;
 
     const SpatialLayer layer = _actors[actor_index(actor_id)].layer;
@@ -400,6 +420,9 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         {
             for(int cell_x = range.min_x; cell_x <= range.max_x; ++cell_x)
             {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+                ++perf_stats().stage_cells_examined;
+#endif
                 if(stage_cell_at(stage, cell_x, cell_y) != StageCell::BLOCKED)
                 {
                     continue;
@@ -453,9 +476,15 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         {
             for(int cell_x = actor_range.min_x; cell_x <= actor_range.max_x; ++cell_x)
             {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+                ++perf_stats().position_cells_examined;
+#endif
                 const CellActorList& cell = _position_table[stage_cell_index(position_stage, cell_x, cell_y)];
                 for(int entry_index = 0; entry_index < cell.count; ++entry_index)
                 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+                    ++perf_stats().candidate_actor_entries;
+#endif
                     candidate_flags[actor_index(cell.actor_ids[entry_index])] = true;
                 }
             }
@@ -489,6 +518,14 @@ WorldBoxList<max_movement_obstacles> SpatialManager::movement_obstacles(
         const WorldBox& expected = full_scan_actor_obstacles.boxes[index];
         BN_ASSERT(actual.center == expected.center && actual.width == expected.width && actual.height == expected.height,
                   "Position table actor order mismatch");
+    }
+#endif
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    perf_stats().result_obstacle_total += result.count;
+    if(result.count > perf_stats().result_obstacle_max)
+    {
+        perf_stats().result_obstacle_max = result.count;
     }
 #endif
 
