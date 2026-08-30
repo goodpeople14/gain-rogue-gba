@@ -23,6 +23,7 @@ namespace
     constexpr int intro_frames = 90;
     constexpr int ready_frames = 120;
     constexpr int go_frames = 45;
+    constexpr int stage_result_frames = 120;
     constexpr int congratulations_frames = 120;
     constexpr int game_over_frames = 120;
     constexpr int player_dead_frames = 120;
@@ -410,8 +411,9 @@ bool GameScene::update()
     {
         if(--_phase_frames_remaining == 0)
         {
-            _clear_stage_message();
-            return true;
+            _stage_phase = StagePhase::GAME_OVER;
+            _phase_frames_remaining = game_over_frames;
+            _set_stage_message("GAME OVER", 9, stage_message_y, 12, 1);
         }
 
         return false;
@@ -445,6 +447,10 @@ bool GameScene::update()
     else if(_stage_phase == StagePhase::CLEARED)
     {
         _update_cleared();
+    }
+    else if(_stage_phase == StagePhase::STAGE_RESULT)
+    {
+        _update_stage_result();
     }
 
     if(bn::keypad::select_pressed())
@@ -722,16 +728,31 @@ void GameScene::_update_cleared()
     const WorldBox& exit_box = definition.exit_box;
     if(touches_or_intersects(player_pushbox, exit_box))
     {
-        if(_session.complete_current_stage())
-        {
-            _start_stage();
-        }
-        else
-        {
-            _stage_phase = StagePhase::CONGRATULATIONS;
-            _phase_frames_remaining = congratulations_frames;
-            _set_stage_message("CONGRATULATIONS!", 16, stage_message_y, 8, 1);
-        }
+        _session.complete_current_stage();
+        char stage_result_text[] = "STAGE 0 CLEARED";
+        stage_result_text[6] = char('0' + stage_number(_session.current_stage()));
+        _stage_phase = StagePhase::STAGE_RESULT;
+        _phase_frames_remaining = stage_result_frames;
+        _set_stage_message(stage_result_text, 15, stage_message_y, 8, 1);
+    }
+}
+
+void GameScene::_update_stage_result()
+{
+    if(--_phase_frames_remaining > 0)
+    {
+        return;
+    }
+
+    if(_session.advance_after_stage_result())
+    {
+        _start_stage();
+    }
+    else
+    {
+        _stage_phase = StagePhase::CONGRATULATIONS;
+        _phase_frames_remaining = congratulations_frames;
+        _set_stage_message("CONGRATULATIONS!", 16, stage_message_y, 8, 1);
     }
 }
 

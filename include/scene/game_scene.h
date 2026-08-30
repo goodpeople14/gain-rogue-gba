@@ -35,6 +35,7 @@ public:
         GO,
         PLAYING,
         CLEARED,
+        STAGE_RESULT,
         PLAYER_DEAD,
         CONGRATULATIONS,
         GAME_OVER
@@ -55,6 +56,7 @@ private:
     void _update_stage_phase();
     void _update_playing();
     void _update_cleared();
+    void _update_stage_result();
     void _update_player_gameplay();
     void _apply_player_damage(int damage);
     void _update_player_health_hud();

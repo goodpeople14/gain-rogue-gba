@@ -14,7 +14,8 @@ public:
     };
 
     void start_new_run();
-    [[nodiscard]] bool complete_current_stage();
+    void complete_current_stage();
+    [[nodiscard]] bool advance_after_stage_result();
     void fail_run();
 
     [[nodiscard]] StageId current_stage() const;
