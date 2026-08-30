@@ -20,6 +20,8 @@
 #include "world/stage_definition.h"
 #include "world/spatial_manager.h"
 
+class GameSession;
+
 class GameScene
 {
 public:
@@ -38,7 +40,7 @@ public:
         GAME_OVER
     };
 
-    GameScene();
+    explicit GameScene(GameSession& session);
 
     void enter();
     void exit();
@@ -89,6 +91,7 @@ private:
     SpatialDebugOverlay _spatial_debug_overlay;
     SpatialManager _spatial_manager;
     bn::vector<bn::sprite_ptr, 20> _stage_message_sprites;
+    GameSession& _session;
     StageId _stage = StageId::STAGE_1;
     StagePhase _stage_phase = StagePhase::INTRO;
     bn::optional<CharacterId> _debug_enemy_type;

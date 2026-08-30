@@ -8,7 +8,8 @@ namespace
 }
 
 Game::Game() :
-    _state(GameState::TITLE)
+    _state(GameState::TITLE),
+    _game_scene(_session)
 {
     bn::bg_palettes::set_transparent_color(title_background_color);
 }
@@ -19,6 +20,7 @@ void Game::update()
     {
         if(_title_scene.update())
         {
+            _session.start_new_run();
             _title_scene.hide();
             _game_scene.enter();
             _state = GameState::GAME;
