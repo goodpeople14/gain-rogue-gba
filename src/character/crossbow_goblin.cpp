@@ -9,6 +9,10 @@
 #include "combat/collision/collision_math.h"
 #include "combat/crossbow_projectile_pool.h"
 #include "combat/hit_effect_manager.h"
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    #include "debug/perf_stats.h"
+#endif
 #include "combat/melee/swordsman_attack.h"
 
 namespace
@@ -302,6 +306,11 @@ void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectMan
     }
 }
 
+CrossbowGoblin::State CrossbowGoblin::state() const
+{
+    return _state;
+}
+
 void CrossbowGoblin::append_debug_shapes(
         CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const
 {
@@ -362,10 +371,18 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
 {
     // Telegraph is a visible aim period. It never moves or rechecks Commit,
     // but its final shot tracks the target up to the launch frame.
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    Direction previous_direction = _attack_direction;
+#endif
     _attack_direction = direction_from_components(
             sign(player_hurtbox.center.x() - position().x()),
             sign(player_hurtbox.center.y() - position().y()), _attack_direction);
     _locked_target = player_hurtbox.center;
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().crossbow_telegraph_frames;
+    ++perf_stats().crossbow_telegraph_apply_movement_calls;
+    perf_stats().crossbow_direction_changes += _attack_direction != previous_direction;
+#endif
     apply_movement(position(), _attack_direction);
     _set_telegraph_visible(true);
     RangedAttackTick tick = ranged_attack_tick(_state, _state_timer);
@@ -408,7 +425,13 @@ void CrossbowGoblin::_set_telegraph_visible(bool visible)
 {
     if(! visible) { _status_icon_sprite.set_visible(false); _status_icon = StatusIcon::NONE; return; }
     if(_status_icon != StatusIcon::TELEGRAPH) _show_status_icon(bn::sprite_items::enemy_telegraph, _telegraph_tiles, _telegraph_palette, StatusIcon::TELEGRAPH, 0);
-    else { _status_icon_sprite.set_position(status_icon_position(position())); _status_icon_sprite.set_visible(true); }
+    else
+    {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++perf_stats().status_icon_position_updates;
+#endif
+        _status_icon_sprite.set_position(status_icon_position(position())); _status_icon_sprite.set_visible(true);
+    }
 }
 
 void CrossbowGoblin::_set_recovery_hourglass_visible(bool visible)

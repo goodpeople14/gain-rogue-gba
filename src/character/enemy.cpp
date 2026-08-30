@@ -5,6 +5,10 @@
 #include "combat/collision/collision_math.h"
 #include "combat/collision/movement_collision.h"
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    #include "debug/perf_stats.h"
+#endif
+
 namespace
 {
     constexpr int respawn_clearance = 2;
@@ -321,6 +325,9 @@ Enemy::MovementResult Enemy::_resolve_move_direction(
         const WorldBoxList<max_movement_obstacles>& obstacles,
         bool constrain_to_home, int home_radius, bn::fixed_point& resolved_position) const
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().resolve_movement_calls;
+#endif
     int horizontal;
     int vertical;
     direction_components(movement_direction, horizontal, vertical);
@@ -336,10 +343,24 @@ Enemy::MovementResult Enemy::_resolve_move_direction(
             position(), next - position(), collision_body().pushbox, obstacles, _movement_bounds);
     if(resolved_position == position())
     {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++perf_stats().movement_blocked;
+#endif
         return MovementResult::BLOCKED;
     }
 
-    return resolved_position == next ? MovementResult::FULL : MovementResult::PARTIAL;
+    if(resolved_position == next)
+    {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++perf_stats().movement_full;
+#endif
+        return MovementResult::FULL;
+    }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().movement_partial;
+#endif
+    return MovementResult::PARTIAL;
 }
 
 Enemy::MovementResult Enemy::_try_move_direction(
@@ -361,12 +382,18 @@ void Enemy::_start_local_detour(
         const bn::fixed_point& target, Direction desired_direction, bn::fixed speed,
         const WorldBoxList<max_movement_obstacles>& obstacles)
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().detour_start_count;
+#endif
     bn::array<Direction, 4> candidates = detour_candidates(desired_direction, _target_id % 2 == 0);
     bool found_candidate = false;
     bn::fixed best_distance = 0;
 
     for(Direction candidate : candidates)
     {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++perf_stats().detour_candidate_checks;
+#endif
         bn::fixed_point resolved_position;
         if(_resolve_move_direction(candidate, speed, obstacles, false, 0, resolved_position) == MovementResult::FULL)
         {

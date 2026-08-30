@@ -11,6 +11,11 @@
 #include "bn_sprite_item.h"
 #include "bn_tile.h"
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    #include "bn_sprites.h"
+    #include "debug/perf_stats.h"
+#endif
+
 #include "combat/collision/movement_collision.h"
 #include "combat/collision/collision_math.h"
 
@@ -211,6 +216,28 @@ namespace
         return int(stage) + 1;
     }
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    [[nodiscard]] constexpr bool goblin_state_moves(Goblin::State state)
+    {
+        return state == Goblin::State::ROAM || state == Goblin::State::CHASE || state == Goblin::State::RETURN;
+    }
+
+    [[nodiscard]] constexpr bool crossbow_state_moves(CrossbowGoblin::State state)
+    {
+        return state == CrossbowGoblin::State::ROAM || state == CrossbowGoblin::State::CHASE ||
+               state == CrossbowGoblin::State::RETURN;
+    }
+
+    struct PerfEnemySnapshot
+    {
+        int occupied = 0;
+        int active = 0;
+        int inactive = 0;
+        int goblin_states[7] = {};
+        int crossbow_states[6] = {};
+    };
+#endif
+
     [[nodiscard]] constexpr bool phase_runs_gameplay(GameScene::StagePhase phase)
     {
         return phase == GameScene::StagePhase::PLAYING;
@@ -388,7 +415,11 @@ void GameScene::_clear_stage_runtime()
 
 bool GameScene::update()
 {
-#if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    perf_stats().begin_frame();
+#endif
+
+#if defined(GAIN_DEBUG_LOGS)
     ++_debug_log_frame_count;
 
     if(_debug_log_frame_count % 60 == 0)
@@ -400,10 +431,6 @@ bool GameScene::update()
                      " frame=", _debug_log_frame_count);
     #endif
 
-    #if defined(GAIN_PERF_DEBUG_LOGS)
-        BN_LOG_LEVEL(bn::log_level::INFO, "[PERF] stage=", current_stage_number,
-                     " frame=", _debug_log_frame_count);
-    #endif
     }
 #endif
 
@@ -416,6 +443,9 @@ bool GameScene::update()
             _set_stage_message("GAME OVER", 9, stage_message_y, 12, 1);
         }
 
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        _finish_perf_frame();
+#endif
         return false;
     }
 
@@ -432,9 +462,15 @@ bool GameScene::update()
             else
             {
                 _clear_stage_message();
+#if defined(GAIN_PERF_DEBUG_LOGS)
+                _finish_perf_frame();
+#endif
                 return true;
             }
         }
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        _finish_perf_frame();
+#endif
         return false;
     }
 
@@ -476,8 +512,87 @@ bool GameScene::update()
     }
 
     _update_collision_debug_overlay();
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    _finish_perf_frame();
+#endif
     return false;
 }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+void GameScene::_finish_perf_frame()
+{
+    if(perf_stats().finish_frame())
+    {
+        _log_perf_window();
+    }
+}
+
+void GameScene::_log_perf_window()
+{
+    PerfEnemySnapshot enemies;
+    for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
+    {
+        const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
+        if(! slot.occupied)
+        {
+            continue;
+        }
+
+        ++enemies.occupied;
+        const Enemy& enemy = _enemy_runtime.enemy(slot);
+        if(enemy.active())
+        {
+            ++enemies.active;
+        }
+        else
+        {
+            ++enemies.inactive;
+        }
+
+        switch(_enemy_runtime.type(slot))
+        {
+        case EnemyType::GOBLIN:
+            ++enemies.goblin_states[int(_enemy_runtime.goblin(slot).state())];
+            break;
+        case EnemyType::CROSSBOW:
+            ++enemies.crossbow_states[int(_enemy_runtime.crossbow(slot).state())];
+            break;
+        case EnemyType::NONE:
+            break;
+        default:
+            BN_ASSERT(false, "Unknown enemy type");
+            break;
+        }
+    }
+
+    PerfStats& stats = perf_stats();
+    const int sprites_used = bn::sprites::used_items_count();
+    const int sprites_available = bn::sprites::available_items_count();
+    BN_LOG_LEVEL(bn::log_level::INFO, "[PERF60] st=", stage_number(_session.current_stage()),
+                 " cpuT=", stats.cpu_ticks_total / stats.frame_count, "/", stats.cpu_ticks_max,
+                 " vbMax=", stats.vblank_ticks_max, " miss=", stats.missed_frames_total, "/", stats.missed_frames_max,
+                 " E=", enemies.occupied, "/", enemies.active, "/", enemies.inactive,
+                 " G=", enemies.goblin_states[0], "/", enemies.goblin_states[1], "/", enemies.goblin_states[2],
+                 "/", enemies.goblin_states[3], "/", enemies.goblin_states[4], "/", enemies.goblin_states[5],
+                 "/", enemies.goblin_states[6], " X=", enemies.crossbow_states[0], "/", enemies.crossbow_states[1],
+                 "/", enemies.crossbow_states[2], "/", enemies.crossbow_states[3], "/", enemies.crossbow_states[4],
+                 "/", enemies.crossbow_states[5]);
+    BN_LOG_LEVEL(bn::log_level::INFO, "[PERF60] q=", stats.movement_query_calls,
+                 " idleQ=", stats.stationary_query_calls, " inactiveQ=", stats.inactive_query_calls,
+                 " sync=", stats.spatial_sync_calls, "/", stats.spatial_sync_noops,
+                 " rm/reg=", stats.position_remove_calls, "/", stats.position_register_calls,
+                 " cell=", stats.stage_cells_examined, "/", stats.position_cells_examined,
+                 " cand=", stats.candidate_actor_entries, " obs=", stats.result_obstacle_total, "/", stats.result_obstacle_max,
+                 " move=", stats.resolve_movement_calls, "/", stats.movement_full, "/", stats.movement_partial,
+                 "/", stats.movement_blocked, " detour=", stats.detour_start_count, "/", stats.detour_candidate_checks,
+                 " xTele=", stats.crossbow_telegraph_frames, "/", stats.crossbow_telegraph_apply_movement_calls,
+                 "/", stats.crossbow_direction_changes, " icon=", stats.status_icon_position_updates,
+                 " proj=", stats.projectile_spawn_attempts, "/", stats.projectile_spawn_success, "/",
+                 stats.projectile_spawn_dropped_pool_full, "/", stats.active_projectile_max,
+                 " spr=", sprites_used, "/", sprites_available);
+    stats.reset();
+}
+#endif
 
 void GameScene::_start_stage()
 {
@@ -586,12 +701,12 @@ void GameScene::_update_playing()
 
     if(movement.moving)
     {
+        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+                SpatialActorId::PLAYER, _movement_query_area(world_box(
+                        _player.position(), _player.collision_body().pushbox.box)));
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _spatial_manager.movement_obstacles(
-                        SpatialActorId::PLAYER, _movement_query_area(world_box(
-                                _player.position(), _player.collision_body().pushbox.box))),
-                _player_bounds);
+                obstacles, _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 
@@ -627,6 +742,16 @@ void GameScene::_update_playing()
         case EnemyType::GOBLIN:
         {
             Goblin& goblin = _enemy_runtime.goblin(slot);
+#if defined(GAIN_PERF_DEBUG_LOGS)
+            if(! goblin.active())
+            {
+                ++perf_stats().inactive_query_calls;
+            }
+            else if(! goblin_state_moves(goblin.state()))
+            {
+                ++perf_stats().stationary_query_calls;
+            }
+#endif
             goblin.update(player_foot_position,
                           goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
                                   slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area())));
@@ -637,6 +762,16 @@ void GameScene::_update_playing()
         case EnemyType::CROSSBOW:
         {
             CrossbowGoblin& crossbow_goblin = _enemy_runtime.crossbow(slot);
+#if defined(GAIN_PERF_DEBUG_LOGS)
+            if(! crossbow_goblin.active())
+            {
+                ++perf_stats().inactive_query_calls;
+            }
+            else if(! crossbow_state_moves(crossbow_goblin.state()))
+            {
+                ++perf_stats().stationary_query_calls;
+            }
+#endif
             crossbow_goblin.update(player_hurtbox, player_foot_position, _spatial_manager.movement_obstacles(
                     slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area())),
                     _crossbow_projectiles);
@@ -763,12 +898,12 @@ void GameScene::_update_player_gameplay()
 
     if(movement.moving)
     {
+        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+                SpatialActorId::PLAYER, _movement_query_area(world_box(
+                        _player.position(), _player.collision_body().pushbox.box)));
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _spatial_manager.movement_obstacles(
-                        SpatialActorId::PLAYER, _movement_query_area(world_box(
-                                _player.position(), _player.collision_body().pushbox.box))),
-                _player_bounds);
+                obstacles, _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 
@@ -1092,6 +1227,9 @@ void GameScene::_sync_spatial_actors()
 void GameScene::_sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,
                                     SpatialLayer layer, bool active)
 {
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    ++perf_stats().spatial_sync_calls;
+#endif
     _spatial_manager.update_actor(actor_id, pushbox, layer);
     _spatial_manager.set_actor_active(actor_id, active);
 }
