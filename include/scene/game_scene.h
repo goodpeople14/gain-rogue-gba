@@ -92,7 +92,6 @@ private:
     SpatialManager _spatial_manager;
     bn::vector<bn::sprite_ptr, 20> _stage_message_sprites;
     GameSession& _session;
-    StageId _stage = StageId::STAGE_1;
     StagePhase _stage_phase = StagePhase::INTRO;
     bn::optional<CharacterId> _debug_enemy_type;
     bn::optional<int> _debug_enemy_actor_id;

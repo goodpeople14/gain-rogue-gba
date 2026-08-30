@@ -14,6 +14,7 @@ public:
     };
 
     void start_new_run();
+    void set_current_stage(StageId stage);
 
     [[nodiscard]] StageId current_stage() const;
     [[nodiscard]] RunState run_state() const;

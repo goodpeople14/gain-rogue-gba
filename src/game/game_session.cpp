@@ -6,6 +6,11 @@ void GameSession::start_new_run()
     _run_state = RunState::PLAYING;
 }
 
+void GameSession::set_current_stage(StageId stage)
+{
+    _current_stage = stage;
+}
+
 StageId GameSession::current_stage() const
 {
     return _current_stage;

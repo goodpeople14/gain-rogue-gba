@@ -1,5 +1,6 @@
 #include "scene/game_scene.h"
 
+#include "game/game_session.h"
 #include "bn_bg_palettes.h"
 #include "bn_array.h"
 #include "bn_fixed.h"
@@ -350,7 +351,7 @@ void GameScene::enter()
     _player.reset_health();
     _update_player_health_hud();
     _set_player_hud_visible(true);
-    _start_stage(StageId::STAGE_1);
+    _start_stage(_session.current_stage());
 }
 
 void GameScene::exit()
@@ -391,7 +392,7 @@ bool GameScene::update()
 
     if(_debug_log_frame_count % 60 == 0)
     {
-        int current_stage_number = stage_number(_stage);
+        int current_stage_number = stage_number(_session.current_stage());
 
     #if defined(GAIN_DEBUG_LOGS)
         BN_LOG_LEVEL(bn::log_level::DEBUG, "[DEBUG] stage=", current_stage_number,
@@ -474,11 +475,11 @@ bool GameScene::update()
 
 void GameScene::_start_stage(StageId stage)
 {
+    _session.set_current_stage(stage);
     _clear_stage_runtime();
-    _stage = stage;
 
 #if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
-    int current_stage_number = stage_number(_stage);
+    int current_stage_number = stage_number(_session.current_stage());
 #endif
 
 #if defined(GAIN_DEBUG_LOGS)
@@ -491,7 +492,7 @@ void GameScene::_start_stage(StageId stage)
 
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
-    const StageDefinition& definition = stage_definition(_stage);
+    const StageDefinition& definition = stage_definition(_session.current_stage());
     _battlefield.set_stage(definition.visual);
     _spatial_manager.set_stage(definition.ground_stage, definition.ground_static_obstacles,
                                definition.upper_stage, definition.upper_static_obstacles);
@@ -537,7 +538,7 @@ void GameScene::_start_stage(StageId stage)
     _validate_debug_enemy_type();
     _sync_spatial_actors();
     char stage_text[] = "STAGE 0";
-    stage_text[6] = char('0' + stage_number(_stage));
+    stage_text[6] = char('0' + stage_number(_session.current_stage()));
     _set_stage_message(stage_text, 7, stage_message_y, 16, 2);
 }
 
@@ -718,15 +719,16 @@ void GameScene::_update_cleared()
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    const StageDefinition& definition = stage_definition(_stage);
+    const StageId current_stage = _session.current_stage();
+    const StageDefinition& definition = stage_definition(current_stage);
     const WorldBox& exit_box = definition.exit_box;
     if(touches_or_intersects(player_pushbox, exit_box))
     {
-        if(_stage == StageId::STAGE_1)
+        if(current_stage == StageId::STAGE_1)
         {
             _start_stage(StageId::STAGE_2);
         }
-        else if(_stage == StageId::STAGE_2)
+        else if(current_stage == StageId::STAGE_2)
         {
             _start_stage(StageId::STAGE_3);
         }
