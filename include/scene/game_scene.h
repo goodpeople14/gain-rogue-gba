@@ -51,7 +51,7 @@ private:
     static constexpr int max_player_health_hud_cells = 8;
 
     void _clear_stage_runtime();
-    void _start_stage(StageId stage);
+    void _start_stage();
     void _update_stage_phase();
     void _update_playing();
     void _update_cleared();

@@ -6,9 +6,26 @@ void GameSession::start_new_run()
     _run_state = RunState::PLAYING;
 }
 
-void GameSession::set_current_stage(StageId stage)
+bool GameSession::complete_current_stage()
 {
-    _current_stage = stage;
+    switch(_current_stage)
+    {
+    case StageId::STAGE_1:
+        _current_stage = StageId::STAGE_2;
+        return true;
+
+    case StageId::STAGE_2:
+        _current_stage = StageId::STAGE_3;
+        return true;
+
+    case StageId::STAGE_3:
+    case StageId::STAGE_4:
+    case StageId::STAGE_5:
+        return false;
+
+    default:
+        return false;
+    }
 }
 
 StageId GameSession::current_stage() const

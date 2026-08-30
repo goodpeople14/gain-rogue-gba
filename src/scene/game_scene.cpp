@@ -351,7 +351,7 @@ void GameScene::enter()
     _player.reset_health();
     _update_player_health_hud();
     _set_player_hud_visible(true);
-    _start_stage(_session.current_stage());
+    _start_stage();
 }
 
 void GameScene::exit()
@@ -473,9 +473,8 @@ bool GameScene::update()
     return false;
 }
 
-void GameScene::_start_stage(StageId stage)
+void GameScene::_start_stage()
 {
-    _session.set_current_stage(stage);
     _clear_stage_runtime();
 
 #if defined(GAIN_DEBUG_LOGS) || defined(GAIN_PERF_DEBUG_LOGS)
@@ -719,18 +718,13 @@ void GameScene::_update_cleared()
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
-    const StageId current_stage = _session.current_stage();
-    const StageDefinition& definition = stage_definition(current_stage);
+    const StageDefinition& definition = stage_definition(_session.current_stage());
     const WorldBox& exit_box = definition.exit_box;
     if(touches_or_intersects(player_pushbox, exit_box))
     {
-        if(current_stage == StageId::STAGE_1)
+        if(_session.complete_current_stage())
         {
-            _start_stage(StageId::STAGE_2);
-        }
-        else if(current_stage == StageId::STAGE_2)
-        {
-            _start_stage(StageId::STAGE_3);
+            _start_stage();
         }
         else
         {
