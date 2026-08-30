@@ -189,6 +189,10 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
     BN_ASSERT(ground_stage.width * ground_stage.height <= SpatialManager::max_stage_cells);
     _stage_cell_count = ground_stage.width * ground_stage.height;
     _clear_position_table();
+    for(Actor& actor : _actors)
+    {
+        actor.registered = false;
+    }
 
 #if defined(GAIN_DEBUG_LOGS)
     _validate_position_table_is_empty();
@@ -198,51 +202,58 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    if(actor.active)
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.pushbox = pushbox;
     actor.layer = layer;
     actor.active = true;
     _register_actor_in_position_table(actor_id, actor.pushbox);
+    actor.registered = true;
 }
 
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    if(same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
+    const bool registration_is_current = actor.active == actor.registered;
+    if(registration_is_current && same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
     {
         return;
     }
 
-    if(actor.active)
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.pushbox = pushbox;
     actor.layer = layer;
     if(actor.active)
     {
         _register_actor_in_position_table(actor_id, actor.pushbox);
+        actor.registered = true;
     }
 }
 
 void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    if(actor.active == active)
+    if(actor.active == active && actor.registered == active)
     {
         return;
     }
-    if(actor.active)
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.active = active;
     if(actor.active)
     {
         _register_actor_in_position_table(actor_id, actor.pushbox);
+        actor.registered = true;
     }
 }
 

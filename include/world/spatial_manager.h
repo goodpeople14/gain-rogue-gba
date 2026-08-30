@@ -70,6 +70,7 @@ private:
         WorldBox pushbox = {};
         SpatialLayer layer = SpatialLayer::GROUND;
         bool active = false;
+        bool registered = false;
     };
 
     struct LayerData
