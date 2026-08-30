@@ -19,6 +19,9 @@ bool GameSession::complete_current_stage()
         return true;
 
     case StageId::STAGE_3:
+        _run_state = RunState::CLEARED;
+        return false;
+
     case StageId::STAGE_4:
     case StageId::STAGE_5:
         return false;
@@ -26,6 +29,11 @@ bool GameSession::complete_current_stage()
     default:
         return false;
     }
+}
+
+void GameSession::fail_run()
+{
+    _run_state = RunState::FAILED;
 }
 
 StageId GameSession::current_stage() const
