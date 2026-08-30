@@ -16,6 +16,13 @@ namespace
         return first == second;
     }
 
+    [[nodiscard]] constexpr bool same_world_box(const WorldBox& first, const WorldBox& second)
+    {
+        return first.center == second.center &&
+               first.width == second.width &&
+               first.height == second.height;
+    }
+
     [[nodiscard]] constexpr WorldBox stage_cell_world_box(const StageData& stage, int cell_x, int cell_y)
     {
         int world_minimum = stage_world_minimum(stage);
@@ -151,6 +158,9 @@ namespace
                                        SpatialLayer::GROUND, SpatialLayer::GROUND));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::ACTOR_0, true,
                                         SpatialLayer::GROUND, SpatialLayer::UPPER));
+    static_assert(same_world_box({ { 1, 2 }, 6, 8 }, { { 1, 2 }, 6, 8 }));
+    static_assert(! same_world_box({ { 1, 2 }, 6, 8 }, { { 2, 2 }, 6, 8 }));
+    static_assert(! same_world_box({ { 1, 2 }, 6, 8 }, { { 1, 2 }, 8, 8 }));
 }
 
 SpatialManager::SpatialManager(const StageData& ground_stage, const StageStaticObstacleData& ground_static_obstacles,
@@ -201,6 +211,11 @@ void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox,
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
+    if(same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
+    {
+        return;
+    }
+
     if(actor.active)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
