@@ -296,7 +296,7 @@ namespace
     static_assert(stage_glyph_index('V') >= 0);
 }
 
-GameScene::GameScene() :
+GameScene::GameScene(GameSession& session) :
     _player(stage_definition(StageId::STAGE_1).player_spawn),
     _player_bounds(player_bounds),
     _enemy_runtime(),
@@ -308,7 +308,8 @@ GameScene::GameScene() :
     _spatial_manager(stage_definition(StageId::STAGE_1).ground_stage,
                      stage_definition(StageId::STAGE_1).ground_static_obstacles,
                      stage_definition(StageId::STAGE_1).upper_stage,
-                     stage_definition(StageId::STAGE_1).upper_static_obstacles)
+                     stage_definition(StageId::STAGE_1).upper_static_obstacles),
+    _session(session)
 {
     int health_x = player_health_hud_x;
     const CharacterDefinition& player_definition = _player.definition();
