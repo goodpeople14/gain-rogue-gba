@@ -217,8 +217,7 @@ void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox,
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    const bool registration_is_current = actor.active == actor.registered;
-    if(registration_is_current && same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
+    if(actor.active && actor.registered && same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
     {
         return;
     }
