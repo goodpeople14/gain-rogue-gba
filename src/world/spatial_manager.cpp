@@ -205,13 +205,15 @@ void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox,
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-#if defined(GAIN_PERF_DEBUG_LOGS)
     if(actor.active && actor.pushbox.center == pushbox.center && actor.pushbox.width == pushbox.width &&
        actor.pushbox.height == pushbox.height && actor.layer == layer)
     {
+#if defined(GAIN_PERF_DEBUG_LOGS)
         ++perf_stats().spatial_sync_noops;
-    }
 #endif
+        return;
+    }
+
     if(actor.active)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
