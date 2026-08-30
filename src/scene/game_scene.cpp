@@ -774,6 +774,7 @@ void GameScene::_apply_player_damage(int damage)
     _update_player_health_hud();
     if(_player.dead())
     {
+        _session.fail_run();
         _stage_phase = StagePhase::PLAYER_DEAD;
         _phase_frames_remaining = player_dead_frames;
         _set_stage_message("YOU DIED", 8, stage_message_y, 12, 1);

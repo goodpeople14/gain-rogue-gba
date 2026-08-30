@@ -15,6 +15,7 @@ public:
 
     void start_new_run();
     [[nodiscard]] bool complete_current_stage();
+    void fail_run();
 
     [[nodiscard]] StageId current_stage() const;
     [[nodiscard]] RunState run_state() const;
