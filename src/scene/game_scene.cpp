@@ -217,12 +217,6 @@ namespace
     }
 
 #if defined(GAIN_PERF_DEBUG_LOGS)
-    [[nodiscard]] constexpr bool crossbow_state_moves(CrossbowGoblin::State state)
-    {
-        return state == CrossbowGoblin::State::ROAM || state == CrossbowGoblin::State::CHASE ||
-               state == CrossbowGoblin::State::RETURN;
-    }
-
     struct PerfEnemySnapshot
     {
         int occupied = 0;
@@ -769,19 +763,21 @@ void GameScene::_update_playing()
         case EnemyType::CROSSBOW:
         {
             CrossbowGoblin& crossbow_goblin = _enemy_runtime.crossbow(slot);
+            const MovementIntent crossbow_movement = crossbow_goblin.plan_movement(player_foot_position);
+            WorldBoxList<max_movement_obstacles> blockers;
+            if(! crossbow_goblin.active() || crossbow_movement.moving)
+            {
 #if defined(GAIN_PERF_DEBUG_LOGS)
-            if(! crossbow_goblin.active())
-            {
-                ++perf_stats().inactive_query_calls;
-            }
-            else if(! crossbow_state_moves(crossbow_goblin.state()))
-            {
-                ++perf_stats().stationary_query_calls;
-            }
+                if(! crossbow_goblin.active())
+                {
+                    ++perf_stats().inactive_query_calls;
+                }
 #endif
-            crossbow_goblin.update(player_hurtbox, player_foot_position, _spatial_manager.movement_obstacles(
-                    slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area())),
-                    _crossbow_projectiles);
+                blockers = _spatial_manager.movement_obstacles(
+                        slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area()));
+            }
+            crossbow_goblin.update(player_hurtbox, player_foot_position, crossbow_movement,
+                                   blockers, _crossbow_projectiles);
             if(crossbow_goblin.active())
             {
                 _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),

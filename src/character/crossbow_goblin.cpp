@@ -252,7 +252,60 @@ void CrossbowGoblin::hide()
     hide_enemy();
 }
 
+MovementIntent CrossbowGoblin::plan_movement(const bn::fixed_point& player_foot_position) const
+{
+    MovementIntent idle = { bn::fixed_point(0, 0), direction(), false };
+    if(! active())
+    {
+        return idle;
+    }
+
+    switch(_state)
+    {
+    case State::ROAM:
+        if(within_distance(foot_position(), player_foot_position, discovery_distance))
+        {
+            return idle;
+        }
+        return movement_intent(roam_directions[_roam_direction_index], roam_speed);
+    case State::CHASE:
+    {
+        bn::fixed_point own_foot_position = foot_position();
+        if(! within_distance(own_foot_position, player_foot_position, disengage_distance))
+        {
+            return idle;
+        }
+
+        switch(ranged_decision(own_foot_position, player_foot_position))
+        {
+        case RangedDecision::RETREAT:
+            return movement_intent(
+                    direction_toward(player_foot_position, own_foot_position, direction()), chase_speed);
+        case RangedDecision::APPROACH:
+            return movement_intent(direction_toward(own_foot_position, player_foot_position, direction()), chase_speed);
+        case RangedDecision::HOLD:
+        default:
+            return idle;
+        }
+    }
+    case State::RETURN:
+        if(within_distance(foot_position(), player_foot_position, discovery_distance) ||
+           within_distance(position(), home_position(), 1))
+        {
+            return idle;
+        }
+        return movement_intent(direction_toward(position(), home_position(), direction()), chase_speed);
+    case State::TELEGRAPH:
+    case State::RECOVERY:
+    case State::DEAD:
+        return idle;
+    default:
+        return idle;
+    }
+}
+
 void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+                             const MovementIntent& movement,
                              const WorldBoxList<max_movement_obstacles>& blockers, CrossbowProjectilePool& projectiles)
 {
     if(! active())
@@ -269,9 +322,9 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_poin
     case State::ROAM:
         if(within_distance(foot_position(), player_foot_position, discovery_distance))
         { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); }
-        else _update_roam(blockers);
+        else if(movement.moving) _update_roam(blockers);
         break;
-    case State::CHASE: _update_chase(player_hurtbox, player_foot_position, blockers); break;
+    case State::CHASE: _update_chase(player_hurtbox, player_foot_position, movement.moving, blockers); break;
     case State::TELEGRAPH: _update_telegraph(player_hurtbox, projectiles); break;
     case State::RECOVERY:
     {
@@ -285,7 +338,7 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_poin
         }
         break;
     }
-    case State::RETURN: _update_return(player_foot_position, blockers); break;
+    case State::RETURN: _update_return(player_foot_position, movement.moving, blockers); break;
     case State::DEAD: break;
     default: break;
     }
@@ -331,6 +384,7 @@ void CrossbowGoblin::_update_roam(const WorldBoxList<max_movement_obstacles>& bl
 
 void CrossbowGoblin::_update_chase(
         const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+        bool movement_planned,
         const WorldBoxList<max_movement_obstacles>& blockers)
 {
     bn::fixed_point own_foot_position = foot_position();
@@ -349,10 +403,13 @@ void CrossbowGoblin::_update_chase(
     {
     case RangedDecision::RETREAT:
     {
-        Direction retreat_direction = direction_toward(player_foot_position, own_foot_position, direction());
-        move_toward_with_local_avoidance(
-                position() + directional_offset(retreat_direction, ranged_commit_radius),
-                chase_speed, blockers);
+        if(movement_planned)
+        {
+            Direction retreat_direction = direction_toward(player_foot_position, own_foot_position, direction());
+            move_toward_with_local_avoidance(
+                    position() + directional_offset(retreat_direction, ranged_commit_radius),
+                    chase_speed, blockers);
+        }
         return;
     }
     case RangedDecision::HOLD:
@@ -360,7 +417,10 @@ void CrossbowGoblin::_update_chase(
         _start_attack(direction_from_components(sign(horizontal), sign(vertical), direction()));
         return;
     case RangedDecision::APPROACH:
-        move_toward_with_local_avoidance(player_foot_position, chase_speed, blockers);
+        if(movement_planned)
+        {
+            move_toward_with_local_avoidance(player_foot_position, chase_speed, blockers);
+        }
         return;
     default:
         return;
@@ -404,13 +464,17 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
 }
 
 void CrossbowGoblin::_update_return(
-        const bn::fixed_point& player_foot_position, const WorldBoxList<max_movement_obstacles>& blockers)
+        const bn::fixed_point& player_foot_position, bool movement_planned,
+        const WorldBoxList<max_movement_obstacles>& blockers)
 {
     if(within_distance(foot_position(), player_foot_position, discovery_distance))
     { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); return; }
     if(within_distance(position(), home_position(), 1))
     { _state = State::ROAM; _state_timer = roam_direction_frames; _status_icon_timer = 0; _set_telegraph_visible(false); return; }
-    move_toward(home_position(), chase_speed, blockers);
+    if(movement_planned)
+    {
+        move_toward(home_position(), chase_speed, blockers);
+    }
 }
 
 void CrossbowGoblin::_start_attack(Direction direction)
