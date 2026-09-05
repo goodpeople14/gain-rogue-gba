@@ -737,6 +737,12 @@ void GameScene::_update_playing()
             continue;
         }
 
+        Enemy& enemy = _enemy_runtime.enemy(slot);
+        if(! enemy.active() && ! enemy.respawn_check_ready())
+        {
+            continue;
+        }
+
         switch(_enemy_runtime.type(slot))
         {
         case EnemyType::GOBLIN:
@@ -755,8 +761,11 @@ void GameScene::_update_playing()
             goblin.update(player_foot_position,
                           goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
                                   slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area())));
-            _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),
-                                goblin.spatial_layer(), goblin.active());
+            if(goblin.active())
+            {
+                _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),
+                                    goblin.spatial_layer(), true);
+            }
             break;
         }
         case EnemyType::CROSSBOW:
@@ -775,8 +784,11 @@ void GameScene::_update_playing()
             crossbow_goblin.update(player_hurtbox, player_foot_position, _spatial_manager.movement_obstacles(
                     slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area())),
                     _crossbow_projectiles);
-            _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
-                                crossbow_goblin.spatial_layer(), crossbow_goblin.active());
+            if(crossbow_goblin.active())
+            {
+                _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
+                                    crossbow_goblin.spatial_layer(), true);
+            }
             break;
         }
         case EnemyType::NONE:
@@ -793,6 +805,12 @@ void GameScene::_update_playing()
     {
         const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
         if(! slot.occupied)
+        {
+            continue;
+        }
+
+        Enemy& enemy = _enemy_runtime.enemy(slot);
+        if(! enemy.active())
         {
             continue;
         }

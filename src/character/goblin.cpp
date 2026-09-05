@@ -251,7 +251,7 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
 {
     if(! active())
     {
-        if(respawn_ready(blocking_pushboxes))
+        if(respawn_position_ready(blocking_pushboxes))
         {
             enter();
         }

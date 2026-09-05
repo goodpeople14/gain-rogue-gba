@@ -16,6 +16,7 @@ public:
     void set_respawn_enabled(bool enabled);
 
     [[nodiscard]] bool active() const;
+    [[nodiscard]] bool respawn_check_ready();
     // Stable value identity for ownership-style references such as projectile debug.
     [[nodiscard]] int actor_id() const;
     [[nodiscard]] WorldBox world_hurtbox() const;
@@ -53,7 +54,7 @@ protected:
 
     [[nodiscard]] int target_id() const;
     [[nodiscard]] const bn::fixed_point& home_position() const;
-    [[nodiscard]] bool respawn_ready(const WorldBoxList<max_movement_obstacles>& obstacles);
+    [[nodiscard]] bool respawn_position_ready(const WorldBoxList<max_movement_obstacles>& obstacles) const;
     [[nodiscard]] bool local_detour_active() const;
 
     [[nodiscard]] static Direction direction_toward(
