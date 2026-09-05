@@ -217,11 +217,6 @@ namespace
     }
 
 #if defined(GAIN_PERF_DEBUG_LOGS)
-    [[nodiscard]] constexpr bool goblin_state_moves(Goblin::State state)
-    {
-        return state == Goblin::State::ROAM || state == Goblin::State::CHASE || state == Goblin::State::RETURN;
-    }
-
     [[nodiscard]] constexpr bool crossbow_state_moves(CrossbowGoblin::State state)
     {
         return state == CrossbowGoblin::State::ROAM || state == CrossbowGoblin::State::CHASE ||
@@ -748,19 +743,22 @@ void GameScene::_update_playing()
         case EnemyType::GOBLIN:
         {
             Goblin& goblin = _enemy_runtime.goblin(slot);
+            const MovementIntent goblin_movement = goblin.plan_movement(
+                    player_foot_position, goblin.spatial_layer() == _player.spatial_layer());
+            WorldBoxList<max_movement_obstacles> blockers;
+            if(! goblin.active() || goblin_movement.moving)
+            {
 #if defined(GAIN_PERF_DEBUG_LOGS)
-            if(! goblin.active())
-            {
-                ++perf_stats().inactive_query_calls;
-            }
-            else if(! goblin_state_moves(goblin.state()))
-            {
-                ++perf_stats().stationary_query_calls;
-            }
+                if(! goblin.active())
+                {
+                    ++perf_stats().inactive_query_calls;
+                }
 #endif
-            goblin.update(player_foot_position,
-                          goblin.spatial_layer() == _player.spatial_layer(), _spatial_manager.movement_obstacles(
-                                  slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area())));
+                blockers = _spatial_manager.movement_obstacles(
+                        slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area()));
+            }
+            goblin.update(player_foot_position, goblin.spatial_layer() == _player.spatial_layer(),
+                          goblin_movement, blockers);
             if(goblin.active())
             {
                 _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),

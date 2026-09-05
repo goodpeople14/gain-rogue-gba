@@ -2,6 +2,7 @@
 #define CHARACTER_ENEMY_H
 
 #include "character/character.h"
+#include "character/movement_intent.h"
 #include "world/battlefield.h"
 
 class CollisionDebugBoxList;
@@ -59,6 +60,7 @@ protected:
 
     [[nodiscard]] static Direction direction_toward(
             const bn::fixed_point& origin, const bn::fixed_point& target, Direction fallback);
+    [[nodiscard]] MovementIntent movement_intent(Direction direction, bn::fixed speed) const;
 
     void reset_local_avoidance();
     void move_direction(Direction direction, bn::fixed speed,
