@@ -1,16 +1,8 @@
 #ifndef PLAYER_CONTROLLER_H
 #define PLAYER_CONTROLLER_H
 
-#include "bn_fixed_point.h"
 #include "character/character.h"
-#include "game/direction.h"
-
-struct MovementIntent
-{
-    bn::fixed_point delta;
-    Direction direction;
-    bool moving;
-};
+#include "character/movement_intent.h"
 
 struct PlayerCommand
 {
