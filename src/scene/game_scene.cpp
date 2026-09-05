@@ -533,36 +533,63 @@ void GameScene::_log_perf_window()
     for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
     {
         const ActiveEnemy& slot = _enemy_runtime.active_enemy(roster_index);
-        if(! slot.occupied) continue;
+        if(! slot.occupied)
+        {
+            continue;
+        }
+
         ++enemies.occupied;
         const Enemy& enemy = _enemy_runtime.enemy(slot);
-        if(enemy.active()) ++enemies.active; else ++enemies.inactive;
+        if(enemy.active())
+        {
+            ++enemies.active;
+        }
+        else
+        {
+            ++enemies.inactive;
+        }
+
         switch(_enemy_runtime.type(slot))
         {
-        case EnemyType::GOBLIN: ++enemies.goblin_states[int(_enemy_runtime.goblin(slot).state())]; break;
-        case EnemyType::CROSSBOW: ++enemies.crossbow_states[int(_enemy_runtime.crossbow(slot).state())]; break;
-        default: break;
+        case EnemyType::GOBLIN:
+            ++enemies.goblin_states[int(_enemy_runtime.goblin(slot).state())];
+            break;
+        case EnemyType::CROSSBOW:
+            ++enemies.crossbow_states[int(_enemy_runtime.crossbow(slot).state())];
+            break;
+        case EnemyType::NONE:
+            break;
+        default:
+            BN_ASSERT(false, "Unknown enemy type");
+            break;
         }
     }
+
     PerfStats& stats = perf_stats();
+    const int sprites_used = bn::sprites::used_items_count();
+    const int sprites_available = bn::sprites::available_items_count();
     BN_LOG_LEVEL(bn::log_level::INFO, "[PERF60] st=", stage_number(_session.current_stage()),
                  " cpuT=", stats.cpu_ticks_total / stats.frame_count, "/", stats.cpu_ticks_max,
                  " vbMax=", stats.vblank_ticks_max, " miss=", stats.missed_frames_total, "/", stats.missed_frames_max,
                  " E=", enemies.occupied, "/", enemies.active, "/", enemies.inactive,
-                 " G=", enemies.goblin_states[0], "/", enemies.goblin_states[1], "/", enemies.goblin_states[2], "/", enemies.goblin_states[3], "/", enemies.goblin_states[4], "/", enemies.goblin_states[5], "/", enemies.goblin_states[6],
-                 " X=", enemies.crossbow_states[0], "/", enemies.crossbow_states[1], "/", enemies.crossbow_states[2], "/", enemies.crossbow_states[3], "/", enemies.crossbow_states[4], "/", enemies.crossbow_states[5]);
+                 " G=", enemies.goblin_states[0], "/", enemies.goblin_states[1], "/", enemies.goblin_states[2],
+                 "/", enemies.goblin_states[3], "/", enemies.goblin_states[4], "/", enemies.goblin_states[5],
+                 "/", enemies.goblin_states[6], " X=", enemies.crossbow_states[0], "/", enemies.crossbow_states[1],
+                 "/", enemies.crossbow_states[2], "/", enemies.crossbow_states[3], "/", enemies.crossbow_states[4],
+                 "/", enemies.crossbow_states[5]);
     BN_LOG_LEVEL(bn::log_level::INFO, "[PERF60] q=", stats.movement_query_calls,
                  " idleQ=", stats.stationary_query_calls, " inactiveQ=", stats.inactive_query_calls,
                  " sync=", stats.spatial_sync_calls, "/", stats.spatial_sync_noops,
                  " rm/reg=", stats.position_remove_calls, "/", stats.position_register_calls,
                  " cell=", stats.stage_cells_examined, "/", stats.position_cells_examined,
                  " cand=", stats.candidate_actor_entries, " obs=", stats.result_obstacle_total, "/", stats.result_obstacle_max,
-                 " move=", stats.resolve_movement_calls, "/", stats.movement_full, "/", stats.movement_partial, "/", stats.movement_blocked,
-                 " detour=", stats.detour_start_count, "/", stats.detour_candidate_checks,
-                 " xTele=", stats.crossbow_telegraph_frames, "/", stats.crossbow_telegraph_apply_movement_calls, "/", stats.crossbow_direction_changes,
-                 " icon=", stats.status_icon_position_updates,
-                 " proj=", stats.projectile_spawn_attempts, "/", stats.projectile_spawn_success, "/", stats.projectile_spawn_dropped_pool_full, "/", stats.active_projectile_max,
-                 " spr=", bn::sprites::used_items_count(), "/", bn::sprites::available_items_count());
+                 " move=", stats.resolve_movement_calls, "/", stats.movement_full, "/", stats.movement_partial,
+                 "/", stats.movement_blocked, " detour=", stats.detour_start_count, "/", stats.detour_candidate_checks,
+                 " xTele=", stats.crossbow_telegraph_frames, "/", stats.crossbow_telegraph_apply_movement_calls,
+                 "/", stats.crossbow_direction_changes, " icon=", stats.status_icon_position_updates,
+                 " proj=", stats.projectile_spawn_attempts, "/", stats.projectile_spawn_success, "/",
+                 stats.projectile_spawn_dropped_pool_full, "/", stats.active_projectile_max,
+                 " spr=", sprites_used, "/", sprites_available);
     stats.reset();
 }
 #endif
@@ -674,12 +701,12 @@ void GameScene::_update_playing()
 
     if(movement.moving)
     {
+        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+                SpatialActorId::PLAYER, _movement_query_area(world_box(
+                        _player.position(), _player.collision_body().pushbox.box)));
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _spatial_manager.movement_obstacles(
-                        SpatialActorId::PLAYER, _movement_query_area(world_box(
-                                _player.position(), _player.collision_body().pushbox.box))),
-                _player_bounds);
+                obstacles, _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 
@@ -871,12 +898,12 @@ void GameScene::_update_player_gameplay()
 
     if(movement.moving)
     {
+        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+                SpatialActorId::PLAYER, _movement_query_area(world_box(
+                        _player.position(), _player.collision_body().pushbox.box)));
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
-                _spatial_manager.movement_obstacles(
-                        SpatialActorId::PLAYER, _movement_query_area(world_box(
-                                _player.position(), _player.collision_body().pushbox.box))),
-                _player_bounds);
+                obstacles, _player_bounds);
         _player.apply_movement(resolved_position, movement.direction);
     }
 

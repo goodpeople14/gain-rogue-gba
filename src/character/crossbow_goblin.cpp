@@ -13,7 +13,6 @@
 #if defined(GAIN_PERF_DEBUG_LOGS)
     #include "debug/perf_stats.h"
 #endif
-
 #include "combat/melee/swordsman_attack.h"
 
 namespace
@@ -372,19 +371,23 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
 {
     // Telegraph is a visible aim period. It never moves or rechecks Commit,
     // but its final shot tracks the target up to the launch frame.
-#if defined(GAIN_PERF_DEBUG_LOGS)
-    Direction previous_direction = _attack_direction;
-#endif
-    _attack_direction = direction_from_components(
+    Direction next_direction = direction_from_components(
             sign(player_hurtbox.center.x() - position().x()),
             sign(player_hurtbox.center.y() - position().y()), _attack_direction);
     _locked_target = player_hurtbox.center;
 #if defined(GAIN_PERF_DEBUG_LOGS)
     ++perf_stats().crossbow_telegraph_frames;
-    ++perf_stats().crossbow_telegraph_apply_movement_calls;
-    perf_stats().crossbow_direction_changes += _attack_direction != previous_direction;
 #endif
-    apply_movement(position(), _attack_direction);
+
+    if(next_direction != _attack_direction)
+    {
+        _attack_direction = next_direction;
+#if defined(GAIN_PERF_DEBUG_LOGS)
+        ++perf_stats().crossbow_telegraph_apply_movement_calls;
+        ++perf_stats().crossbow_direction_changes;
+#endif
+        apply_movement(position(), _attack_direction);
+    }
     _set_telegraph_visible(true);
     RangedAttackTick tick = ranged_attack_tick(_state, _state_timer);
     _state = tick.next_state;
