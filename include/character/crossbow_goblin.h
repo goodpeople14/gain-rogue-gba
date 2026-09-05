@@ -27,6 +27,7 @@ public:
                 CrossbowProjectilePool& projectiles);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
 
+    [[nodiscard]] State state() const;
     void append_debug_shapes(
             CollisionDebugBoxList& boxes, CollisionDebugRadiusList& radii) const final;
 
