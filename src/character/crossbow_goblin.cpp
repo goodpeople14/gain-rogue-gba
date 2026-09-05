@@ -257,7 +257,7 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_poin
 {
     if(! active())
     {
-        if(respawn_ready(blockers))
+        if(respawn_position_ready(blockers))
         {
             enter();
         }

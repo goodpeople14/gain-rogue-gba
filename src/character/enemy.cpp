@@ -153,6 +153,22 @@ bool Enemy::active() const
     return _active;
 }
 
+bool Enemy::respawn_check_ready()
+{
+    if(! _respawning)
+    {
+        return false;
+    }
+
+    if(_respawn_timer > 0)
+    {
+        --_respawn_timer;
+        return false;
+    }
+
+    return true;
+}
+
 int Enemy::actor_id() const
 {
     return _target_id;
@@ -222,20 +238,9 @@ const bn::fixed_point& Enemy::home_position() const
     return _home_position;
 }
 
-bool Enemy::respawn_ready(const WorldBoxList<max_movement_obstacles>& obstacles)
+bool Enemy::respawn_position_ready(const WorldBoxList<max_movement_obstacles>& obstacles) const
 {
-    if(! _respawning)
-    {
-        return false;
-    }
-
-    if(_respawn_timer > 0)
-    {
-        --_respawn_timer;
-        return false;
-    }
-
-    return _respawn_position_is_safe(obstacles);
+    return _respawning && _respawn_position_is_safe(obstacles);
 }
 
 bool Enemy::local_detour_active() const
