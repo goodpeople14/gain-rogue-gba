@@ -254,6 +254,15 @@ Direction Enemy::direction_toward(
     return direction_from_components(sign(target.x() - origin.x()), sign(target.y() - origin.y()), fallback);
 }
 
+MovementIntent Enemy::movement_intent(Direction movement_direction, bn::fixed speed) const
+{
+    int horizontal;
+    int vertical;
+    direction_components(movement_direction, horizontal, vertical);
+    bn::fixed step = horizontal && vertical ? speed * diagonal_ratio : speed;
+    return { { horizontal * step, vertical * step }, movement_direction, true };
+}
+
 void Enemy::reset_local_avoidance()
 {
     _stuck_frames = 0;

@@ -22,7 +22,9 @@ public:
     void enter();
     void deactivate();
     void hide();
+    [[nodiscard]] MovementIntent plan_movement(const bn::fixed_point& player_foot_position) const;
     void update(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+                const MovementIntent& movement,
                 const WorldBoxList<max_movement_obstacles>& blocking_pushboxes,
                 CrossbowProjectilePool& projectiles);
     void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
@@ -36,9 +38,10 @@ private:
 
     void _update_roam(const WorldBoxList<max_movement_obstacles>& blockers);
     void _update_chase(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+                       bool movement_planned,
                        const WorldBoxList<max_movement_obstacles>& blockers);
     void _update_telegraph(const WorldBox& player_hurtbox, CrossbowProjectilePool& projectiles);
-    void _update_return(const bn::fixed_point& player_foot_position,
+    void _update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
                         const WorldBoxList<max_movement_obstacles>& blockers);
     void _start_attack(Direction direction);
     void _die();

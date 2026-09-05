@@ -246,7 +246,64 @@ void Goblin::hide()
     hide_enemy();
 }
 
+MovementIntent Goblin::plan_movement(
+        const bn::fixed_point& player_foot_position, bool player_on_same_layer) const
+{
+    MovementIntent idle = { bn::fixed_point(0, 0), direction(), false };
+    if(! active())
+    {
+        return idle;
+    }
+
+    if(! player_on_same_layer && (_state == State::CHASE || _state == State::RETURN ||
+                                  _state == State::TELEGRAPH || _state == State::ACTIVE ||
+                                  _state == State::RECOVERY))
+    {
+        return movement_intent(roam_directions[_roam_direction_index], roam_speed);
+    }
+
+    switch(_state)
+    {
+    case State::ROAM:
+        if(player_on_same_layer && within_distance(foot_position(), player_foot_position, discovery_distance))
+        {
+            return idle;
+        }
+        return movement_intent(roam_directions[_roam_direction_index], roam_speed);
+    case State::CHASE:
+    {
+        bn::fixed_point own_foot_position = foot_position();
+        if(! within_distance(own_foot_position, player_foot_position, disengage_distance) && ! local_detour_active())
+        {
+            return idle;
+        }
+
+        if(within_distance(own_foot_position, player_foot_position, melee_commit_radius))
+        {
+            return idle;
+        }
+
+        return movement_intent(direction_toward(own_foot_position, player_foot_position, direction()), chase_speed);
+    }
+    case State::RETURN:
+        if(within_distance(foot_position(), player_foot_position, discovery_distance) ||
+           within_distance(position(), home_position(), 1))
+        {
+            return idle;
+        }
+        return movement_intent(direction_toward(position(), home_position(), direction()), chase_speed);
+    case State::TELEGRAPH:
+    case State::ACTIVE:
+    case State::RECOVERY:
+    case State::DEAD:
+        return idle;
+    default:
+        return idle;
+    }
+}
+
 void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
+                    const MovementIntent& movement,
                     const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(! active())
@@ -287,11 +344,14 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
         }
         else
         {
-            _update_roam(blocking_pushboxes);
+            if(movement.moving)
+            {
+                _update_roam(blocking_pushboxes);
+            }
         }
         break;
     case State::CHASE:
-        _update_chase(player_foot_position, blocking_pushboxes);
+        _update_chase(player_foot_position, movement.moving, blocking_pushboxes);
         break;
     case State::TELEGRAPH:
         _update_telegraph();
@@ -303,7 +363,7 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
         _update_recovery();
         break;
     case State::RETURN:
-        _update_return(player_foot_position, blocking_pushboxes);
+        _update_return(player_foot_position, movement.moving, blocking_pushboxes);
         break;
     case State::DEAD:
         break;
@@ -397,7 +457,7 @@ void Goblin::_update_roam(const WorldBoxList<max_movement_obstacles>& blocking_p
     }
 }
 
-void Goblin::_update_chase(const bn::fixed_point& player_foot_position,
+void Goblin::_update_chase(const bn::fixed_point& player_foot_position, bool movement_planned,
                            const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     bn::fixed_point own_foot_position = foot_position();
@@ -417,7 +477,10 @@ void Goblin::_update_chase(const bn::fixed_point& player_foot_position,
         return;
     }
 
-    move_toward_with_local_avoidance(player_foot_position, chase_speed, blocking_pushboxes);
+    if(movement_planned)
+    {
+        move_toward_with_local_avoidance(player_foot_position, chase_speed, blocking_pushboxes);
+    }
 }
 
 void Goblin::_update_telegraph()
@@ -450,7 +513,7 @@ void Goblin::_update_recovery()
     }
 }
 
-void Goblin::_update_return(const bn::fixed_point& player_foot_position,
+void Goblin::_update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(within_distance(foot_position(), player_foot_position, discovery_distance))
@@ -470,7 +533,10 @@ void Goblin::_update_return(const bn::fixed_point& player_foot_position,
         return;
     }
 
-    move_toward(home_position(), chase_speed, blocking_pushboxes);
+    if(movement_planned)
+    {
+        move_toward(home_position(), chase_speed, blocking_pushboxes);
+    }
 }
 
 void Goblin::_start_attack(Direction direction)
