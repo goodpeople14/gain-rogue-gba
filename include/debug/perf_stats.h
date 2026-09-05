@@ -16,7 +16,6 @@ public:
     int vblank_ticks_max = 0;
     int missed_frames_total = 0;
     int missed_frames_max = 0;
-
     int movement_query_calls = 0;
     int stationary_query_calls = 0;
     int inactive_query_calls = 0;
@@ -29,19 +28,16 @@ public:
     int candidate_actor_entries = 0;
     int result_obstacle_total = 0;
     int result_obstacle_max = 0;
-
     int resolve_movement_calls = 0;
     int movement_full = 0;
     int movement_partial = 0;
     int movement_blocked = 0;
     int detour_start_count = 0;
     int detour_candidate_checks = 0;
-
     int crossbow_telegraph_frames = 0;
     int crossbow_telegraph_apply_movement_calls = 0;
     int crossbow_direction_changes = 0;
     int status_icon_position_updates = 0;
-
     int projectile_spawn_attempts = 0;
     int projectile_spawn_success = 0;
     int projectile_spawn_dropped_pool_full = 0;

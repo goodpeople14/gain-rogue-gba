@@ -70,6 +70,8 @@ private:
         WorldBox pushbox = {};
         SpatialLayer layer = SpatialLayer::GROUND;
         bool active = false;
+        // True when this actor is present in the position table at `pushbox`.
+        bool registered = false;
     };
 
     struct LayerData

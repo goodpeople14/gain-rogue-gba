@@ -20,6 +20,13 @@ namespace
         return first == second;
     }
 
+    [[nodiscard]] constexpr bool same_world_box(const WorldBox& first, const WorldBox& second)
+    {
+        return first.center == second.center &&
+               first.width == second.width &&
+               first.height == second.height;
+    }
+
     [[nodiscard]] constexpr WorldBox stage_cell_world_box(const StageData& stage, int cell_x, int cell_y)
     {
         int world_minimum = stage_world_minimum(stage);
@@ -155,6 +162,9 @@ namespace
                                        SpatialLayer::GROUND, SpatialLayer::GROUND));
     static_assert(! should_include_actor(SpatialActorId::PLAYER, SpatialActorId::ACTOR_0, true,
                                         SpatialLayer::GROUND, SpatialLayer::UPPER));
+    static_assert(same_world_box({ { 1, 2 }, 6, 8 }, { { 1, 2 }, 6, 8 }));
+    static_assert(! same_world_box({ { 1, 2 }, 6, 8 }, { { 2, 2 }, 6, 8 }));
+    static_assert(! same_world_box({ { 1, 2 }, 6, 8 }, { { 1, 2 }, 8, 8 }));
 }
 
 SpatialManager::SpatialManager(const StageData& ground_stage, const StageStaticObstacleData& ground_static_obstacles,
@@ -183,6 +193,10 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
     BN_ASSERT(ground_stage.width * ground_stage.height <= SpatialManager::max_stage_cells);
     _stage_cell_count = ground_stage.width * ground_stage.height;
     _clear_position_table();
+    for(Actor& actor : _actors)
+    {
+        actor.registered = false;
+    }
 
 #if defined(GAIN_DEBUG_LOGS)
     _validate_position_table_is_empty();
@@ -192,53 +206,60 @@ void SpatialManager::set_stage(const StageData& ground_stage, const StageStaticO
 void SpatialManager::set_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    if(actor.active)
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.pushbox = pushbox;
     actor.layer = layer;
     actor.active = true;
     _register_actor_in_position_table(actor_id, actor.pushbox);
+    actor.registered = true;
 }
 
 void SpatialManager::update_actor(SpatialActorId actor_id, const WorldBox& pushbox, SpatialLayer layer)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-#if defined(GAIN_PERF_DEBUG_LOGS)
-    if(actor.active && actor.pushbox.center == pushbox.center && actor.pushbox.width == pushbox.width &&
-       actor.pushbox.height == pushbox.height && actor.layer == layer)
+    if(actor.active && actor.registered && same_world_box(actor.pushbox, pushbox) && actor.layer == layer)
     {
+#if defined(GAIN_PERF_DEBUG_LOGS)
         ++perf_stats().spatial_sync_noops;
-    }
 #endif
-    if(actor.active)
+        return;
+    }
+
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.pushbox = pushbox;
     actor.layer = layer;
     if(actor.active)
     {
         _register_actor_in_position_table(actor_id, actor.pushbox);
+        actor.registered = true;
     }
 }
 
 void SpatialManager::set_actor_active(SpatialActorId actor_id, bool active)
 {
     Actor& actor = _actors[actor_index(actor_id)];
-    if(actor.active == active)
+    if(actor.active == active && actor.registered == active)
     {
         return;
     }
-    if(actor.active)
+    if(actor.registered)
     {
         _remove_actor_from_position_table(actor_id, actor.pushbox);
+        actor.registered = false;
     }
     actor.active = active;
     if(actor.active)
     {
         _register_actor_in_position_table(actor_id, actor.pushbox);
+        actor.registered = true;
     }
 }
 

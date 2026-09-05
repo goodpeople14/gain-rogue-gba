@@ -388,7 +388,6 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
 #endif
         apply_movement(position(), _attack_direction);
     }
-
     _set_telegraph_visible(true);
     RangedAttackTick tick = ranged_attack_tick(_state, _state_timer);
     _state = tick.next_state;
