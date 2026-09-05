@@ -690,9 +690,9 @@ void GameScene::_update_playing()
 
     if(movement.moving)
     {
-        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+        WorldBoxList<max_movement_obstacles> obstacles = _movement_obstacles(
                 SpatialActorId::PLAYER, _movement_query_area(world_box(
-                        _player.position(), _player.collision_body().pushbox.box)));
+                        _player.position(), _player.collision_body().pushbox.box)), true, false);
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
                 obstacles, _player_bounds);
@@ -727,7 +727,8 @@ void GameScene::_update_playing()
         }
 
         Enemy& enemy = _enemy_runtime.enemy(slot);
-        if(! enemy.active() && ! enemy.respawn_check_ready())
+        const bool respawn_safety_check = ! enemy.active() && enemy.respawn_check_ready();
+        if(! enemy.active() && ! respawn_safety_check)
         {
             continue;
         }
@@ -739,18 +740,9 @@ void GameScene::_update_playing()
             Goblin& goblin = _enemy_runtime.goblin(slot);
             const MovementIntent goblin_movement = goblin.plan_movement(
                     player_foot_position, goblin.spatial_layer() == _player.spatial_layer());
-            WorldBoxList<max_movement_obstacles> blockers;
-            if(! goblin.active() || goblin_movement.moving)
-            {
-#if defined(GAIN_PERF_DEBUG_LOGS)
-                if(! goblin.active())
-                {
-                    ++perf_stats().inactive_query_calls;
-                }
-#endif
-                blockers = _spatial_manager.movement_obstacles(
-                        slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area()));
-            }
+            WorldBoxList<max_movement_obstacles> blockers = _movement_obstacles(
+                    slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area()),
+                    goblin_movement.moving, respawn_safety_check);
             goblin.update(player_foot_position, goblin.spatial_layer() == _player.spatial_layer(),
                           goblin_movement, blockers);
             if(goblin.active())
@@ -764,18 +756,9 @@ void GameScene::_update_playing()
         {
             CrossbowGoblin& crossbow_goblin = _enemy_runtime.crossbow(slot);
             const MovementIntent crossbow_movement = crossbow_goblin.plan_movement(player_foot_position);
-            WorldBoxList<max_movement_obstacles> blockers;
-            if(! crossbow_goblin.active() || crossbow_movement.moving)
-            {
-#if defined(GAIN_PERF_DEBUG_LOGS)
-                if(! crossbow_goblin.active())
-                {
-                    ++perf_stats().inactive_query_calls;
-                }
-#endif
-                blockers = _spatial_manager.movement_obstacles(
-                        slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area()));
-            }
+            WorldBoxList<max_movement_obstacles> blockers = _movement_obstacles(
+                    slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area()),
+                    crossbow_movement.moving, respawn_safety_check);
             crossbow_goblin.update(player_hurtbox, player_foot_position, crossbow_movement,
                                    blockers, _crossbow_projectiles);
             if(crossbow_goblin.active())
@@ -910,9 +893,9 @@ void GameScene::_update_player_gameplay()
 
     if(movement.moving)
     {
-        WorldBoxList<max_movement_obstacles> obstacles = _spatial_manager.movement_obstacles(
+        WorldBoxList<max_movement_obstacles> obstacles = _movement_obstacles(
                 SpatialActorId::PLAYER, _movement_query_area(world_box(
-                        _player.position(), _player.collision_body().pushbox.box)));
+                        _player.position(), _player.collision_body().pushbox.box)), true, false);
         bn::fixed_point resolved_position = resolve_movement(
                 _player.position(), movement.delta, _player.collision_body().pushbox,
                 obstacles, _player_bounds);
@@ -1250,4 +1233,23 @@ WorldBox GameScene::_movement_query_area(const WorldBox& pushbox)
 {
     return { pushbox.center, pushbox.width + movement_query_padding * 2,
              pushbox.height + movement_query_padding * 2 };
+}
+
+WorldBoxList<max_movement_obstacles> GameScene::_movement_obstacles(
+        SpatialActorId actor_id, const WorldBox& query_area,
+        bool movement_requested, bool respawn_safety_check)
+{
+    if(! movement_requested && ! respawn_safety_check)
+    {
+        return {};
+    }
+
+#if defined(GAIN_PERF_DEBUG_LOGS)
+    if(respawn_safety_check)
+    {
+        ++perf_stats().inactive_query_calls;
+    }
+#endif
+
+    return _spatial_manager.movement_obstacles(actor_id, query_area);
 }

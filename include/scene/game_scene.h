@@ -76,6 +76,9 @@ private:
     void _sync_spatial_actor(SpatialActorId actor_id, const WorldBox& pushbox,
                              SpatialLayer layer, bool active);
     [[nodiscard]] static WorldBox _movement_query_area(const WorldBox& pushbox);
+    [[nodiscard]] WorldBoxList<max_movement_obstacles> _movement_obstacles(
+            SpatialActorId actor_id, const WorldBox& query_area,
+            bool movement_requested, bool respawn_safety_check);
 
 #if defined(GAIN_PERF_DEBUG_LOGS)
     void _finish_perf_frame();
