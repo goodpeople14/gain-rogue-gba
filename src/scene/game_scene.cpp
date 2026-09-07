@@ -1,6 +1,7 @@
 #include "scene/game_scene.h"
 
 #include "game/game_session.h"
+#include "audio/audio_system.h"
 #include "bn_bg_palettes.h"
 #include "bn_array.h"
 #include "bn_fixed.h"
@@ -314,7 +315,7 @@ namespace
     static_assert(stage_glyph_index('V') >= 0);
 }
 
-GameScene::GameScene(GameSession& session) :
+GameScene::GameScene(GameSession& session, AudioSystem& audio) :
     _player(stage_definition(StageId::STAGE_1).player_spawn),
     _player_bounds(player_bounds),
     _enemy_runtime(),
@@ -327,7 +328,8 @@ GameScene::GameScene(GameSession& session) :
                      stage_definition(StageId::STAGE_1).ground_static_obstacles,
                      stage_definition(StageId::STAGE_1).upper_stage,
                      stage_definition(StageId::STAGE_1).upper_static_obstacles),
-    _session(session)
+    _session(session),
+    _audio(audio)
 {
     int health_x = player_health_hud_x;
     const CharacterDefinition& player_definition = _player.definition();
@@ -703,9 +705,9 @@ void GameScene::_update_playing()
                         world_box(_player.position(), _player.collision_body().pushbox.box),
                         _player.spatial_layer(), true);
 
-    if(command.attack_requested)
+    if(command.attack_requested && _player.try_attack())
     {
-        _player.try_attack();
+        _audio.play_sfx(SfxId::SWORD_SWING);
     }
 
     _player.update();
@@ -906,9 +908,9 @@ void GameScene::_update_player_gameplay()
                         world_box(_player.position(), _player.collision_body().pushbox.box),
                         _player.spatial_layer(), true);
 
-    if(command.attack_requested)
+    if(command.attack_requested && _player.try_attack())
     {
-        _player.try_attack();
+        _audio.play_sfx(SfxId::SWORD_SWING);
     }
 
     _player.update();

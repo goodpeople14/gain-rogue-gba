@@ -9,7 +9,7 @@ namespace
 
 Game::Game() :
     _state(GameState::TITLE),
-    _game_scene(_session)
+    _game_scene(_session, _audio)
 {
     bn::bg_palettes::set_transparent_color(title_background_color);
 }

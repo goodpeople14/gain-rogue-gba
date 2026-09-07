@@ -21,6 +21,7 @@
 #include "world/spatial_manager.h"
 
 class GameSession;
+class AudioSystem;
 
 class GameScene
 {
@@ -41,7 +42,7 @@ public:
         GAME_OVER
     };
 
-    explicit GameScene(GameSession& session);
+    GameScene(GameSession& session, AudioSystem& audio);
 
     void enter();
     void exit();
@@ -102,6 +103,7 @@ private:
     SpatialManager _spatial_manager;
     bn::vector<bn::sprite_ptr, 20> _stage_message_sprites;
     GameSession& _session;
+    AudioSystem& _audio;
     StagePhase _stage_phase = StagePhase::INTRO;
     bn::optional<CharacterId> _debug_enemy_type;
     bn::optional<int> _debug_enemy_actor_id;

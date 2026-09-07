@@ -19,6 +19,7 @@ BUILD            := build
 
 # Project:
 SOURCES          := src \
+                    src/audio \
                     src/game \
                     src/scene \
                     src/world \
