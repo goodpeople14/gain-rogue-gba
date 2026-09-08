@@ -302,7 +302,7 @@ MovementIntent Goblin::plan_movement(
     }
 }
 
-void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
+bool Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
                     const MovementIntent& movement,
                     const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
@@ -312,9 +312,10 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
         {
             enter();
         }
-        return;
+        return false;
     }
 
+    bool entered_alert = false;
     _update_timed_status_icon();
 
     // A floor transition does not exist yet.  An enemy on the other logical
@@ -341,6 +342,7 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
             _state = State::CHASE;
             _status_icon_timer = discovery_flash_frames;
             _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
+            entered_alert = true;
         }
         else
         {
@@ -363,7 +365,7 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
         _update_recovery();
         break;
     case State::RETURN:
-        _update_return(player_foot_position, movement.moving, blocking_pushboxes);
+        entered_alert = _update_return(player_foot_position, movement.moving, blocking_pushboxes);
         break;
     case State::DEAD:
         break;
@@ -375,13 +377,15 @@ void Goblin::update(const bn::fixed_point& player_foot_position, bool player_on_
     {
         _status_icon_sprite.set_position(status_icon_position(position()));
     }
+
+    return entered_alert;
 }
 
-void Goblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
+bool Goblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
 {
     if(! active())
     {
-        return;
+        return false;
     }
 
     int damage = attack.try_hit(target_id(), position(), collision_body().hurtbox);
@@ -393,7 +397,10 @@ void Goblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hi
         {
             _die();
         }
+        return true;
     }
+
+    return false;
 }
 
 int Goblin::resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
@@ -513,7 +520,7 @@ void Goblin::_update_recovery()
     }
 }
 
-void Goblin::_update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
+bool Goblin::_update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
                             const WorldBoxList<max_movement_obstacles>& blocking_pushboxes)
 {
     if(within_distance(foot_position(), player_foot_position, discovery_distance))
@@ -521,7 +528,7 @@ void Goblin::_update_return(const bn::fixed_point& player_foot_position, bool mo
         _state = State::CHASE;
         _status_icon_timer = discovery_flash_frames;
         _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
-        return;
+        return true;
     }
 
     if(within_distance(position(), home_position(), 1))
@@ -530,13 +537,15 @@ void Goblin::_update_return(const bn::fixed_point& player_foot_position, bool mo
         _state_timer = roam_direction_frames;
         _status_icon_timer = 0;
         _set_telegraph_visible(false);
-        return;
+        return false;
     }
 
     if(movement_planned)
     {
         move_toward(home_position(), chase_speed, blocking_pushboxes);
     }
+
+    return false;
 }
 
 void Goblin::_start_attack(Direction direction)

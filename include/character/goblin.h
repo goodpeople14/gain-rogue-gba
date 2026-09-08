@@ -34,10 +34,10 @@ public:
     void hide();
     [[nodiscard]] MovementIntent plan_movement(
             const bn::fixed_point& player_foot_position, bool player_on_same_layer) const;
-    void update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
-                const MovementIntent& movement,
-                const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
-    void resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
+    [[nodiscard]] bool update(const bn::fixed_point& player_foot_position, bool player_on_same_layer,
+                              const MovementIntent& movement,
+                              const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    [[nodiscard]] bool resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects);
     [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
                                          HitEffectManager& hit_effects);
 
@@ -62,8 +62,8 @@ private:
     void _update_telegraph();
     void _update_active();
     void _update_recovery();
-    void _update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
-                        const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
+    [[nodiscard]] bool _update_return(const bn::fixed_point& player_foot_position, bool movement_planned,
+                                      const WorldBoxList<max_movement_obstacles>& blocking_pushboxes);
     void _start_attack(Direction direction);
     void _finish_attack();
     void _die();

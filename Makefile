@@ -40,7 +40,14 @@ GRAPHICS         := graphics/characters/heroes/gunner \
                     graphics/effects/common \
                     graphics/backgrounds \
                     graphics/ui
-AUDIO            := audio
+AUDIO            := audio/sword_swing.wav \
+                    audio/enemy_hit.wav \
+                    audio/player_hit.wav \
+                    audio/enemy_alert.wav \
+                    audio/crossbow_fire.wav \
+                    audio/arrow_land.wav \
+                    audio/stage_clear.wav \
+                    audio/player_death.wav
 DMGAUDIO         := dmg_audio
 
 # Butano:
