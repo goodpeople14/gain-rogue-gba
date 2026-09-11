@@ -19,8 +19,8 @@ public:
 
     // The source is a value identity only; projectile lifetime remains independent
     // from the firing Enemy instance.
-    void spawn(int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target);
-    void update();
+    [[nodiscard]] bool spawn(int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target);
+    [[nodiscard]] bool update();
     [[nodiscard]] int resolve_player_hit(const bn::fixed_point& player_position, const Hurtbox& player_hurtbox,
                                          HitEffectManager& hit_effects);
     void append_collision_debug_boxes(int source_actor_id, CollisionDebugBoxList& boxes) const;

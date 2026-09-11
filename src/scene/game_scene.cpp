@@ -745,8 +745,12 @@ void GameScene::_update_playing()
             WorldBoxList<max_movement_obstacles> blockers = _movement_obstacles(
                     slot.actor_id, _movement_query_area(goblin.movement_obstacle_query_area()),
                     goblin_movement.moving, respawn_safety_check);
-            goblin.update(player_foot_position, goblin.spatial_layer() == _player.spatial_layer(),
-                          goblin_movement, blockers);
+            bool entered_alert = goblin.update(player_foot_position, goblin.spatial_layer() == _player.spatial_layer(),
+                                               goblin_movement, blockers);
+            if(enemy_alert_event(entered_alert) != SfxEvent::NONE)
+            {
+                _audio.play_sfx(sfx_id_for(SfxEvent::ENEMY_ALERT));
+            }
             if(goblin.active())
             {
                 _sync_spatial_actor(slot.actor_id, goblin.world_pushbox(),
@@ -761,8 +765,16 @@ void GameScene::_update_playing()
             WorldBoxList<max_movement_obstacles> blockers = _movement_obstacles(
                     slot.actor_id, _movement_query_area(crossbow_goblin.movement_obstacle_query_area()),
                     crossbow_movement.moving, respawn_safety_check);
-            crossbow_goblin.update(player_hurtbox, player_foot_position, crossbow_movement,
-                                   blockers, _crossbow_projectiles);
+            CrossbowGoblin::UpdateEvents events = crossbow_goblin.update(
+                    player_hurtbox, player_foot_position, crossbow_movement, blockers, _crossbow_projectiles);
+            if(enemy_alert_event(events.entered_alert) != SfxEvent::NONE)
+            {
+                _audio.play_sfx(sfx_id_for(SfxEvent::ENEMY_ALERT));
+            }
+            if(crossbow_fire_event(events.fired_projectile) != SfxEvent::NONE)
+            {
+                _audio.play_sfx(sfx_id_for(SfxEvent::CROSSBOW_FIRE));
+            }
             if(crossbow_goblin.active())
             {
                 _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
@@ -777,7 +789,10 @@ void GameScene::_update_playing()
             break;
         }
     }
-    _crossbow_projectiles.update();
+    if(arrow_land_event(_crossbow_projectiles.update()) != SfxEvent::NONE)
+    {
+        _audio.play_sfx(sfx_id_for(SfxEvent::ARROW_LAND));
+    }
 
     int player_damage = 0;
     for(int roster_index = 0; roster_index < EnemyRuntime::active_enemy_capacity; ++roster_index)
@@ -800,7 +815,10 @@ void GameScene::_update_playing()
         {
             Goblin& goblin = _enemy_runtime.goblin(slot);
             const bool active_before_combat = goblin.active();
-            goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+            if(enemy_hit_event(goblin.resolve_player_attack(_player.melee_attack(), _hit_effects)) != SfxEvent::NONE)
+            {
+                _audio.play_sfx(sfx_id_for(SfxEvent::ENEMY_HIT));
+            }
             player_damage += goblin.resolve_player_hit(
                     _player.position(), _player.collision_body().hurtbox, _hit_effects);
             if(goblin.active() != active_before_combat)
@@ -814,7 +832,10 @@ void GameScene::_update_playing()
         {
             CrossbowGoblin& crossbow_goblin = _enemy_runtime.crossbow(slot);
             const bool active_before_combat = crossbow_goblin.active();
-            crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects);
+            if(enemy_hit_event(crossbow_goblin.resolve_player_attack(_player.melee_attack(), _hit_effects)) != SfxEvent::NONE)
+            {
+                _audio.play_sfx(sfx_id_for(SfxEvent::ENEMY_HIT));
+            }
             if(crossbow_goblin.active() != active_before_combat)
             {
                 _sync_spatial_actor(slot.actor_id, crossbow_goblin.world_pushbox(),
@@ -844,6 +865,7 @@ void GameScene::_update_playing()
 
     if(_all_stage_enemies_defeated())
     {
+        _audio.play_sfx(sfx_id_for(stage_clear_event(true)));
         _stage_phase = StagePhase::CLEARED;
         _set_stage_message("EXIT", 4, exit_message_y, 8, 1);
     }
@@ -852,7 +874,10 @@ void GameScene::_update_playing()
 void GameScene::_update_cleared()
 {
     _update_player_gameplay();
-    _crossbow_projectiles.update();
+    if(arrow_land_event(_crossbow_projectiles.update()) != SfxEvent::NONE)
+    {
+        _audio.play_sfx(sfx_id_for(SfxEvent::ARROW_LAND));
+    }
     _hit_effects.update();
 
     WorldBox player_pushbox = world_box(_player.position(), _player.collision_body().pushbox.box);
@@ -924,9 +949,11 @@ void GameScene::_apply_player_damage(int damage)
     }
 
     _player.take_damage(damage);
+    _audio.play_sfx(sfx_id_for(player_hit_event(damage)));
     _update_player_health_hud();
     if(_player.dead())
     {
+        _audio.play_sfx(sfx_id_for(player_death_event(true)));
         _session.fail_run();
         _stage_phase = StagePhase::PLAYER_DEAD;
         _phase_frames_remaining = player_dead_frames;

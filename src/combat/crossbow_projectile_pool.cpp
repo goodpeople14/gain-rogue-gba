@@ -43,7 +43,7 @@ namespace
     static_assert(! matches_debug_source(14, 15));
 }
 
-void CrossbowProjectilePool::spawn(
+bool CrossbowProjectilePool::spawn(
         int source_actor_id, const bn::fixed_point& start, const bn::fixed_point& target)
 {
 #if defined(GAIN_PERF_DEBUG_LOGS)
@@ -64,17 +64,19 @@ void CrossbowProjectilePool::spawn(
 #if defined(GAIN_PERF_DEBUG_LOGS)
             ++perf_stats().projectile_spawn_success;
 #endif
-            return;
+            return true;
         }
     }
 
 #if defined(GAIN_PERF_DEBUG_LOGS)
     ++perf_stats().projectile_spawn_dropped_pool_full;
 #endif
+    return false;
 }
 
-void CrossbowProjectilePool::update()
+bool CrossbowProjectilePool::update()
 {
+    bool projectile_landed = false;
 #if defined(GAIN_PERF_DEBUG_LOGS)
     int active_count = 0;
 #endif
@@ -100,6 +102,7 @@ void CrossbowProjectilePool::update()
         {
             slot.sprite->set_position(slot.target);
             slot.landing = true;
+            projectile_landed = true;
             continue;
         }
 
@@ -114,6 +117,8 @@ void CrossbowProjectilePool::update()
         perf_stats().active_projectile_max = active_count;
     }
 #endif
+
+    return projectile_landed;
 }
 
 int CrossbowProjectilePool::resolve_player_hit(const bn::fixed_point& player_position,

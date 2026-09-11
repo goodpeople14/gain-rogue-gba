@@ -304,28 +304,35 @@ MovementIntent CrossbowGoblin::plan_movement(const bn::fixed_point& player_foot_
     }
 }
 
-void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
-                             const MovementIntent& movement,
-                             const WorldBoxList<max_movement_obstacles>& blockers, CrossbowProjectilePool& projectiles)
+CrossbowGoblin::UpdateEvents CrossbowGoblin::update(
+        const WorldBox& player_hurtbox, const bn::fixed_point& player_foot_position,
+        const MovementIntent& movement, const WorldBoxList<max_movement_obstacles>& blockers,
+        CrossbowProjectilePool& projectiles)
 {
+    UpdateEvents events;
     if(! active())
     {
         if(respawn_position_ready(blockers))
         {
             enter();
         }
-        return;
+        return events;
     }
     _update_timed_status_icon();
     switch(_state)
     {
     case State::ROAM:
         if(within_distance(foot_position(), player_foot_position, discovery_distance))
-        { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); }
+        {
+            _state = State::CHASE;
+            _status_icon_timer = discovery_flash_frames;
+            _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
+            events.entered_alert = true;
+        }
         else if(movement.moving) _update_roam(blockers);
         break;
     case State::CHASE: _update_chase(player_hurtbox, player_foot_position, movement.moving, blockers); break;
-    case State::TELEGRAPH: _update_telegraph(player_hurtbox, projectiles); break;
+    case State::TELEGRAPH: events.fired_projectile = _update_telegraph(player_hurtbox, projectiles); break;
     case State::RECOVERY:
     {
         _set_recovery_hourglass_visible(true);
@@ -338,14 +345,15 @@ void CrossbowGoblin::update(const WorldBox& player_hurtbox, const bn::fixed_poin
         }
         break;
     }
-    case State::RETURN: _update_return(player_foot_position, movement.moving, blockers); break;
+    case State::RETURN: events.entered_alert = _update_return(player_foot_position, movement.moving, blockers); break;
     case State::DEAD: break;
     default: break;
     }
     if(_status_icon != StatusIcon::NONE) _status_icon_sprite.set_position(status_icon_position(position()));
+    return events;
 }
 
-void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
+bool CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectManager& hit_effects)
 {
     int damage = active() ? attack.try_hit(target_id(), position(), collision_body().hurtbox) : 0;
     if(damage > 0)
@@ -356,7 +364,10 @@ void CrossbowGoblin::resolve_player_attack(SwordsmanAttack& attack, HitEffectMan
         {
             _die();
         }
+        return true;
     }
+
+    return false;
 }
 
 CrossbowGoblin::State CrossbowGoblin::state() const
@@ -427,7 +438,7 @@ void CrossbowGoblin::_update_chase(
     }
 }
 
-void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowProjectilePool& projectiles)
+bool CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowProjectilePool& projectiles)
 {
     // Telegraph is a visible aim period. It never moves or rechecks Commit,
     // but its final shot tracks the target up to the launch frame.
@@ -456,25 +467,41 @@ void CrossbowGoblin::_update_telegraph(const WorldBox& player_hurtbox, CrossbowP
     {
         int horizontal; int vertical; direction_components(_attack_direction, horizontal, vertical);
         // actor_id() is a stable value identity, not an owner pointer.
-        projectiles.spawn(actor_id(), { position().x() + horizontal * 6, position().y() + vertical * 6 },
-                          _locked_target);
+        bool spawned = projectiles.spawn(actor_id(), { position().x() + horizontal * 6, position().y() + vertical * 6 },
+                                         _locked_target);
         _set_telegraph_visible(false); _status_icon_frame = 0;
         _set_recovery_hourglass_visible(true);
+        return spawned;
     }
+
+    return false;
 }
 
-void CrossbowGoblin::_update_return(
+bool CrossbowGoblin::_update_return(
         const bn::fixed_point& player_foot_position, bool movement_planned,
         const WorldBoxList<max_movement_obstacles>& blockers)
 {
     if(within_distance(foot_position(), player_foot_position, discovery_distance))
-    { _state = State::CHASE; _status_icon_timer = discovery_flash_frames; _set_awareness_icon(StatusIcon::DISCOVERY_FLASH); return; }
+    {
+        _state = State::CHASE;
+        _status_icon_timer = discovery_flash_frames;
+        _set_awareness_icon(StatusIcon::DISCOVERY_FLASH);
+        return true;
+    }
     if(within_distance(position(), home_position(), 1))
-    { _state = State::ROAM; _state_timer = roam_direction_frames; _status_icon_timer = 0; _set_telegraph_visible(false); return; }
+    {
+        _state = State::ROAM;
+        _state_timer = roam_direction_frames;
+        _status_icon_timer = 0;
+        _set_telegraph_visible(false);
+        return false;
+    }
     if(movement_planned)
     {
         move_toward(home_position(), chase_speed, blockers);
     }
+
+    return false;
 }
 
 void CrossbowGoblin::_start_attack(Direction direction)
