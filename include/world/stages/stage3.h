@@ -38,6 +38,7 @@ namespace stage3
 
     constexpr StageDefinition definition = {
         StageVisualId::STAGE_1,
+        BgmId::STAGE,
         ground_data,
         ground_static_obstacles,
         upper_data,

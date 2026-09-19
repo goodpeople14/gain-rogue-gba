@@ -376,6 +376,7 @@ void GameScene::enter()
 void GameScene::exit()
 {
     _clear_stage_runtime();
+    _audio.stop_bgm();
     _battlefield.set_visible(false);
     _player.set_visible(false);
     _collision_debug_overlay.reset();
@@ -604,6 +605,7 @@ void GameScene::_start_stage()
     _stage_phase = StagePhase::INTRO;
     _phase_frames_remaining = intro_frames;
     const StageDefinition& definition = stage_definition(_session.current_stage());
+    _audio.play_bgm(definition.bgm);
     _battlefield.set_stage(definition.visual);
     _spatial_manager.set_stage(definition.ground_stage, definition.ground_static_obstacles,
                                definition.upper_stage, definition.upper_static_obstacles);

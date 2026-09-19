@@ -47,7 +47,8 @@ AUDIO            := audio/sword_swing.wav \
                     audio/crossbow_fire.wav \
                     audio/arrow_land.wav \
                     audio/stage_clear.wav \
-                    audio/player_death.wav
+                    audio/player_death.wav \
+                    audio/stage_bgm.xm
 DMGAUDIO         := dmg_audio
 
 # Butano:

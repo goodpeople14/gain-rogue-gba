@@ -1,6 +1,12 @@
 #ifndef AUDIO_SYSTEM_H
 #define AUDIO_SYSTEM_H
 
+#include "audio/bgm_id.h"
+
+static_assert(should_start_bgm(BgmId::NONE, BgmId::STAGE));
+static_assert(! should_start_bgm(BgmId::STAGE, BgmId::STAGE));
+static_assert(! should_start_bgm(BgmId::NONE, BgmId::NONE));
+
 enum class SfxId
 {
     SWORD_SWING,
@@ -89,6 +95,11 @@ class AudioSystem
 {
 public:
     void play_sfx(SfxId id);
+    void play_bgm(BgmId id);
+    void stop_bgm();
+
+private:
+    BgmId _current_bgm = BgmId::NONE;
 };
 
 #endif

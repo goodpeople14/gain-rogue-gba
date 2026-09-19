@@ -1,6 +1,8 @@
 #include "audio/audio_system.h"
 
 #include "bn_assert.h"
+#include "bn_music.h"
+#include "bn_music_items.h"
 #include "bn_sound.h"
 #include "bn_sound_items.h"
 
@@ -69,5 +71,37 @@ void AudioSystem::play_sfx(SfxId id)
     default:
         BN_ERROR("Invalid SFX id: ", int(id));
         break;
+    }
+}
+
+void AudioSystem::play_bgm(BgmId id)
+{
+    if(! should_start_bgm(_current_bgm, id))
+    {
+        return;
+    }
+
+    switch(id)
+    {
+    case BgmId::STAGE:
+        bn::music::play(bn::music_items::stage_bgm, 1, true);
+        _current_bgm = id;
+        break;
+
+    case BgmId::NONE:
+        break;
+
+    default:
+        BN_ERROR("Invalid BGM id: ", int(id));
+        break;
+    }
+}
+
+void AudioSystem::stop_bgm()
+{
+    if(_current_bgm != BgmId::NONE)
+    {
+        bn::music::stop();
+        _current_bgm = BgmId::NONE;
     }
 }
