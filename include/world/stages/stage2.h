@@ -76,6 +76,7 @@ namespace stage2
     constexpr WorldBox exit_box = { { 0, -64 }, 24, 8 };
     constexpr StageDefinition definition = {
         StageVisualId::STAGE_2,
+        BgmId::STAGE,
         ground_data,
         ground_static_obstacles,
         upper_data,

@@ -143,6 +143,7 @@ namespace stage1
     constexpr int enemy_spawn_count = sizeof(enemy_spawns) / sizeof(enemy_spawns[0]);
     constexpr StageDefinition definition = {
         StageVisualId::STAGE_1,
+        BgmId::STAGE,
         data,
         static_obstacles,
         data,

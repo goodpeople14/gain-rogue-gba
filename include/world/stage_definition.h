@@ -5,6 +5,7 @@
 
 #include "bn_fixed_point.h"
 
+#include "audio/bgm_id.h"
 #include "enemy/enemy_type.h"
 #include "combat/collision/collision_box.h"
 #include "world/spatial_layer.h"
@@ -36,6 +37,7 @@ struct StageEnemySpawn
 struct StageDefinition
 {
     StageVisualId visual;
+    BgmId bgm;
     const StageData& ground_stage;
     const StageStaticObstacleData& ground_static_obstacles;
     const StageData& upper_stage;
