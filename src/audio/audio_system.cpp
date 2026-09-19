@@ -8,6 +8,15 @@
 
 namespace
 {
+    constexpr bn::fixed SFX_VOLUME = 0.72;
+    constexpr bn::fixed BGM_VOLUME = 1;
+
+    static_assert(SFX_VOLUME > 0);
+    static_assert(SFX_VOLUME <= 1);
+    static_assert(BGM_VOLUME > 0);
+    static_assert(BGM_VOLUME <= 1);
+    static_assert(BGM_VOLUME > SFX_VOLUME);
+
     static_assert(enemy_hit_event(1) == SfxEvent::ENEMY_HIT);
     static_assert(enemy_hit_event(0) == SfxEvent::NONE);
     static_assert(player_hit_event(1) == SfxEvent::PLAYER_HIT);
@@ -37,35 +46,35 @@ void AudioSystem::play_sfx(SfxId id)
     {
     case SfxId::SWORD_SWING:
         // Audio resource exhaustion must not interrupt gameplay.
-        bn::sound::play_optional(bn::sound_items::sword_swing);
+        bn::sound::play_optional(bn::sound_items::sword_swing, SFX_VOLUME);
         break;
 
     case SfxId::ENEMY_HIT:
-        bn::sound::play_optional(bn::sound_items::enemy_hit);
+        bn::sound::play_optional(bn::sound_items::enemy_hit, SFX_VOLUME);
         break;
 
     case SfxId::PLAYER_HIT:
-        bn::sound::play_optional(bn::sound_items::player_hit);
+        bn::sound::play_optional(bn::sound_items::player_hit, SFX_VOLUME);
         break;
 
     case SfxId::ENEMY_ALERT:
-        bn::sound::play_optional(bn::sound_items::enemy_alert);
+        bn::sound::play_optional(bn::sound_items::enemy_alert, SFX_VOLUME);
         break;
 
     case SfxId::CROSSBOW_FIRE:
-        bn::sound::play_optional(bn::sound_items::crossbow_fire);
+        bn::sound::play_optional(bn::sound_items::crossbow_fire, SFX_VOLUME);
         break;
 
     case SfxId::ARROW_LAND:
-        bn::sound::play_optional(bn::sound_items::arrow_land);
+        bn::sound::play_optional(bn::sound_items::arrow_land, SFX_VOLUME);
         break;
 
     case SfxId::STAGE_CLEAR:
-        bn::sound::play_optional(bn::sound_items::stage_clear);
+        bn::sound::play_optional(bn::sound_items::stage_clear, SFX_VOLUME);
         break;
 
     case SfxId::PLAYER_DEATH:
-        bn::sound::play_optional(bn::sound_items::player_death);
+        bn::sound::play_optional(bn::sound_items::player_death, SFX_VOLUME);
         break;
 
     default:
@@ -84,7 +93,7 @@ void AudioSystem::play_bgm(BgmId id)
     switch(id)
     {
     case BgmId::STAGE:
-        bn::music::play(bn::music_items::stage_bgm, 1, true);
+        bn::music::play(bn::music_items::stage_bgm, BGM_VOLUME, true);
         _current_bgm = id;
         break;
 
